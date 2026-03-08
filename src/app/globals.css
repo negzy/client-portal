@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background-primary: #080c14;
+  --background-secondary: #0c1222;
+  --surface-card: #111827;
+  --surface-elevated: #141c2e;
+  --surface-border: #1e293b;
+  --border-accent: rgba(249, 115, 22, 0.4);
+  --accent-primary: #f97316;
+  --accent-glow: rgba(249, 115, 22, 0.25);
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+}
+
+body {
+  background-color: var(--background-primary);
+  color: var(--text-primary);
+}
+
+@layer components {
+  /* Sharper, more structured panels - minimal rounding */
+  .card {
+    @apply border border-surface-border bg-surface-card p-6 shadow-card transition-shadow duration-200;
+    border-radius: 8px;
+  }
+  .card-hover:hover {
+    @apply shadow-card-hover;
+    border-color: var(--border-accent);
+  }
+  .card-elevated {
+    @apply border border-surface-border bg-surface-elevated shadow-card;
+    border-radius: 8px;
+  }
+  .panel {
+    @apply border border-surface-border bg-surface-card;
+    border-radius: 8px;
+  }
+  .btn-primary {
+    @apply border-0 bg-accent-primary px-5 py-2.5 font-semibold text-white transition-all duration-200 hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 focus:ring-offset-background-primary disabled:opacity-50;
+    border-radius: 6px;
+  }
+  .btn-secondary {
+    @apply border border-surface-border bg-surface-elevated px-5 py-2.5 font-medium text-slate-200 transition-all duration-200 hover:border-accent-primary/50 hover:bg-accent-primary/10 focus:outline-none focus:ring-2 focus:ring-accent-primary/40 focus:ring-offset-2 focus:ring-offset-background-primary;
+    border-radius: 6px;
+  }
+  .input-field {
+    @apply w-full border border-surface-border bg-surface-elevated px-4 py-2.5 text-white placeholder-text-muted transition-colors focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary/40;
+    border-radius: 6px;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-semibold text-text-secondary;
+  }
+  .kpi-card {
+    @apply border border-surface-border bg-surface-card p-5 shadow-card transition-all duration-200 hover:border-accent-primary/30;
+    border-radius: 8px;
+  }
+  .section-heading {
+    @apply text-base font-bold tracking-tight text-white;
+  }
+  .section-sub {
+    @apply mt-0.5 text-sm text-text-secondary;
+  }
+  .page-title {
+    @apply text-2xl font-bold tracking-tight text-white md:text-3xl;
+  }
+  .page-sub {
+    @apply mt-1.5 text-sm text-text-secondary;
+  }
+  .card, .card-elevated {
+    @apply p-6;
+  }
+}
+
+* {
+  @apply antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-background-secondary;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-surface-border;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-accent-primary/40;
+}

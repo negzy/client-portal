@@ -1,0 +1,15 @@
+# Local env and secrets
+.env
+.env.local
+.env.*.local
+
+# E2E and tests (not needed in deployment)
+e2e
+playwright.config.ts
+**/*.spec.ts
+**/*.test.ts
+
+# Dev and tooling
+.node_modules
+.next
+*.log
