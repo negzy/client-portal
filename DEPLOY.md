@@ -1,5 +1,30 @@
 # Deploy to Vercel
 
+## Add this project to Vercel (quick)
+
+1. **Push to GitHub** (if not already):
+   ```bash
+   git add .
+   git commit -m "Deploy to Vercel"
+   git push origin main
+   ```
+2. **Vercel** → [vercel.com](https://vercel.com) → **Add New…** → **Project** → import your repo.
+3. **Settings:** Framework = Next.js, Root = `.`, Build = `npm run build` (default).
+4. **Environment variables** (Settings → Environment Variables). Use **only letters, numbers, underscore** in variable **names**:
+
+   | Variable | Value | Required |
+   |----------|--------|----------|
+   | `DATABASE_URL` | Postgres URL (Supabase: use **Transaction** pooler, port **6543**, add `?pgbouncer=true`) | Yes |
+   | `NEXTAUTH_SECRET` | e.g. `openssl rand -base64 32` | Yes |
+   | `NEXTAUTH_URL` | `https://your-app.vercel.app` (no trailing slash) | Yes |
+   | `RESEND_API_KEY` | Resend key (optional) | No |
+   | `EMAIL_FROM` | Sender (optional) | No |
+
+5. **Deploy** (or Redeploy after adding env vars).
+6. **Database:** run `npx prisma db push` once against your production DB (same `DATABASE_URL`).
+
+---
+
 ## 1. Push your code to GitHub
 
 If you haven’t already:

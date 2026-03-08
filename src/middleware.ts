@@ -16,11 +16,13 @@ export default withAuth(
     if (path.startsWith("/dashboard") && isAdmin)
       return NextResponse.redirect(new URL("/admin", req.url));
 
-    return NextResponse.next();
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set("x-pathname", path);
+    return NextResponse.next({ request: { headers: requestHeaders } });
   },
   { callbacks: { authorized: ({ token }) => !!token } }
 );
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*"],
+  matcher: ["/dashboard/:path*", "/admin/:path*", "/onboarding"],
 };
