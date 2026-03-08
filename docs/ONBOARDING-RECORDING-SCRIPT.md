@@ -4,6 +4,12 @@ Use this when recording a walkthrough of a client navigating the portal. Keep it
 
 ---
 
+## In-app guided tour (for portal walkthrough)
+
+After login, clients can click **"Take the tour"** in the sidebar. A step-by-step overlay walks them through Dashboard, Credit Import, Document Vault, Tasks & Progress, Messages, and Profile. You can **record your screen while clicking through the tour** and read each step aloud (or use your own words). No need to memorize — the copy is right there. Great for a quick “how the portal works” video.
+
+---
+
 ## Before You Record
 
 - Use a **clean test account** or demo mode so no real client data shows.

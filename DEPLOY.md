@@ -14,7 +14,7 @@
 
    | Variable | Value | Required |
    |----------|--------|----------|
-   | `DATABASE_URL` | Postgres URL (Supabase: use **Transaction** pooler, port **6543**, add `?pgbouncer=true`) | Yes |
+   | `DATABASE_URL` | Postgres URL. **Supabase:** use the **Transaction** pooler string (host `aws-0-XX.pooler.supabase.com`, port **6543**), not the direct DB host (`db.xxx.supabase.co`). Add `?pgbouncer=true` at the end. | Yes |
    | `NEXTAUTH_SECRET` | e.g. `openssl rand -base64 32` | Yes |
    | `NEXTAUTH_URL` | `https://your-app.vercel.app` (no trailing slash) | Yes |
    | `RESEND_API_KEY` | Resend key (optional) | No |

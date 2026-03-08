@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { DashboardNav } from "@/components/DashboardNav";
+import { PortalTour } from "@/components/PortalTour";
 
 const ALLOWED_DURING_ONBOARDING = ["/dashboard/credit-import", "/dashboard/vault"];
 
@@ -46,7 +47,8 @@ export default async function DashboardLayout({
             <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Portal</span>
           </Link>
         </div>
-        <div className="p-4">
+        <div className="p-4 space-y-3">
+          <PortalTour />
           <DashboardNav unreadMessagesCount={unreadMessagesCount} />
         </div>
       </aside>
