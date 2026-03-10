@@ -7,6 +7,7 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { analyzeCreditReport, createAuditFromAnalysis } from "@/lib/credit-audit";
 import type { Bureau } from "@prisma/client";
+import { isBlobStorageAvailable, uploadToBlob } from "@/lib/blob";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -49,14 +50,40 @@ export async function POST(req: Request) {
     );
   }
 
-  const dir = path.join(process.cwd(), "uploads", "credit", profile.id);
-  await mkdir(dir, { recursive: true });
-  const ext = path.extname(file.name) || (type === "pdf" ? ".pdf" : ".jpg");
-  const fileName = `${randomUUID()}${ext}`;
-  const filePath = path.join(dir, fileName);
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
-  await writeFile(filePath, buffer);
+  const ext = path.extname(file.name) || (type === "pdf" ? ".pdf" : ".jpg");
+  const baseName = `${randomUUID()}${ext}`;
+  let filePath: string;
+
+  if (isBlobStorageAvailable()) {
+    const blobUrl = await uploadToBlob(
+      buffer,
+      `credit/${profile.id}/${baseName}`,
+      { contentType: file.type || (type === "pdf" ? "application/pdf" : "image/jpeg") }
+    );
+    if (!blobUrl) {
+      return NextResponse.json(
+        { error: "Upload failed. Please try again." },
+        { status: 503 }
+      );
+    }
+    filePath = blobUrl;
+  } else {
+    const dir = path.join(process.cwd(), "uploads", "credit", profile.id);
+    try {
+      await mkdir(dir, { recursive: true });
+      const fullPath = path.join(dir, baseName);
+      await writeFile(fullPath, buffer);
+      filePath = path.relative(process.cwd(), fullPath);
+    } catch (err) {
+      console.error("[credit/upload] write failed:", err);
+      return NextResponse.json(
+        { error: "File storage is not available on this server. Uploads are disabled. Please contact support or try again later." },
+        { status: 503 }
+      );
+    }
+  }
 
   // Extract text from PDF so we can try to read bureau scores (Experian, Equifax, TransUnion)
   let rawText: string | undefined;

@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { unlink } from "fs/promises";
 import path from "path";
+import { deleteBlobByUrl } from "@/lib/blob";
 
 export async function DELETE(
   _req: Request,
@@ -30,8 +31,12 @@ export async function DELETE(
   }
 
   try {
-    const absolutePath = path.join(process.cwd(), doc.filePath);
-    await unlink(absolutePath);
+    if (doc.filePath.startsWith("http://") || doc.filePath.startsWith("https://")) {
+      await deleteBlobByUrl(doc.filePath);
+    } else {
+      const absolutePath = path.join(process.cwd(), doc.filePath);
+      await unlink(absolutePath);
+    }
   } catch (e) {
     // File may already be missing; continue to delete DB record
   }

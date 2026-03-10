@@ -6,6 +6,7 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 import type { DocumentCategory } from "@prisma/client";
+import { isBlobStorageAvailable, uploadToBlob } from "@/lib/blob";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -31,20 +32,49 @@ export async function POST(req: Request) {
     );
   }
 
-  const dir = path.join(process.cwd(), "uploads", "vault", profile.id);
-  await mkdir(dir, { recursive: true });
-  const ext = path.extname(file.name) || "";
-  const fileName = `${randomUUID()}${ext}`;
-  const filePath = path.join(dir, fileName);
   const bytes = await file.arrayBuffer();
-  await writeFile(filePath, Buffer.from(bytes));
+  const buffer = Buffer.from(bytes);
+  const ext = path.extname(file.name) || "";
+  const baseName = `${randomUUID()}${ext}`;
+
+  let filePath: string;
+
+  if (isBlobStorageAvailable()) {
+    const blobUrl = await uploadToBlob(
+      buffer,
+      `vault/${profile.id}/${baseName}`,
+      { contentType: file.type || undefined }
+    );
+    if (blobUrl) {
+      filePath = blobUrl;
+    } else {
+      return NextResponse.json(
+        { error: "Upload failed. Please try again." },
+        { status: 503 }
+      );
+    }
+  } else {
+    const dir = path.join(process.cwd(), "uploads", "vault", profile.id);
+    try {
+      await mkdir(dir, { recursive: true });
+      filePath = path.join(dir, baseName);
+      await writeFile(filePath, buffer);
+      filePath = path.relative(process.cwd(), filePath);
+    } catch (err) {
+      console.error("[documents/upload] write failed:", err);
+      return NextResponse.json(
+        { error: "File storage is not available on this server. Uploads are disabled. Please contact support or try again later." },
+        { status: 503 }
+      );
+    }
+  }
 
   await prisma.document.create({
     data: {
       clientProfileId: profile.id,
       category,
       fileName: file.name,
-      filePath: path.relative(process.cwd(), filePath),
+      filePath,
       fileSize: file.size,
       mimeType: file.type,
     },

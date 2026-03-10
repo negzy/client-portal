@@ -22,6 +22,11 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Missing path" }, { status: 400 });
   }
 
+  // Blob URL (Vercel Blob or other): redirect to the URL
+  if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
+    return NextResponse.redirect(filePath, 302);
+  }
+
   const resolved = path.resolve(process.cwd(), filePath);
   const cwd = process.cwd();
   if (!resolved.startsWith(cwd) || resolved.includes("..")) {

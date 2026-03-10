@@ -58,8 +58,13 @@ export function OnboardingFlow({ reviewMode = false }: { reviewMode?: boolean })
   const [uploadingReport, setUploadingReport] = useState(false);
   const [documentByCategory, setDocumentByCategory] = useState<Record<string, boolean>>({});
   const [uploadingCategory, setUploadingCategory] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState("");
   const reportInputRef = useRef<HTMLInputElement>(null);
   const docInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    setUploadError("");
+  }, [step]);
 
   useEffect(() => {
     if (step !== 2 && step !== 4) return;
@@ -86,12 +91,15 @@ export function OnboardingFlow({ reviewMode = false }: { reviewMode?: boolean })
   }, [step]);
 
   async function uploadCreditReport(file: File) {
+    setUploadError("");
     setUploadingReport(true);
     try {
       const form = new FormData();
       form.set("file", file);
       const res = await fetch("/api/credit/upload", { method: "POST", body: form });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) setReportUploaded(true);
+      else setUploadError(data.error ?? "Upload failed");
     } finally {
       setUploadingReport(false);
       if (reportInputRef.current) reportInputRef.current.value = "";
@@ -99,13 +107,16 @@ export function OnboardingFlow({ reviewMode = false }: { reviewMode?: boolean })
   }
 
   async function uploadDocument(file: File, category: DocumentCategory, index: number) {
+    setUploadError("");
     setUploadingCategory(String(index));
     try {
       const form = new FormData();
       form.set("file", file);
       form.set("category", category);
       const res = await fetch("/api/documents/upload", { method: "POST", body: form });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) setDocumentByCategory((prev) => ({ ...prev, [category]: true }));
+      else setUploadError(data.error ?? "Upload failed");
     } finally {
       setUploadingCategory(null);
       const input = docInputRefs.current[index];
@@ -303,6 +314,9 @@ export function OnboardingFlow({ reviewMode = false }: { reviewMode?: boolean })
                         I'll do it later
                       </button>
                     </div>
+                    {uploadError && (
+                      <p className="mt-3 text-sm text-red-400">{uploadError}</p>
+                    )}
                   </div>
                   <div className="mt-6 rounded-lg border border-zinc-600 bg-zinc-700/50 p-4">
                     <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Quick checklist</p>
@@ -457,6 +471,9 @@ export function OnboardingFlow({ reviewMode = false }: { reviewMode?: boolean })
                   <p className="mt-3 text-sm text-zinc-400">
                     Files are saved to your Document Vault. You can also upload or add more later from the portal.
                   </p>
+                  {uploadError && (
+                    <p className="mt-3 text-sm text-red-400">{uploadError}</p>
+                  )}
                   <div className="mt-6 flex gap-3">
                     <button
                       type="button"

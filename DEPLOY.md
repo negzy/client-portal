@@ -17,6 +17,8 @@
    | `DATABASE_URL` | Postgres URL. **Supabase:** use the **Transaction** pooler string (host `aws-0-XX.pooler.supabase.com`, port **6543**), not the direct DB host (`db.xxx.supabase.co`). Add `?pgbouncer=true` at the end. | Yes |
    | `NEXTAUTH_SECRET` | e.g. `openssl rand -base64 32` | Yes |
    | `NEXTAUTH_URL` | `https://your-app.vercel.app` (no trailing slash) | Yes |
+   | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (same as your DB project) | For uploads |
+   | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API → service_role key | For uploads |
    | `RESEND_API_KEY` | Resend key (optional) | No |
    | `EMAIL_FROM` | Sender (optional) | No |
 
@@ -74,11 +76,19 @@ After adding variables, go to **Deployments** → … on the latest deployment �
 
 ---
 
-## File uploads (vault, credit reports, etc.)
+## File uploads (Supabase Storage)
 
-The app currently stores uploaded files on the **local filesystem** (`uploads/`). On Vercel the filesystem is read-only and ephemeral, so:
+Uploads use **Supabase Storage** when `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set (onboarding, Document Vault, Credit Import, audit PDFs). Without them, uploads fail on Vercel.
 
-- **Uploads will not persist** across requests or redeploys.
-- You may see write errors when uploading documents or credit reports.
+**To enable (same Supabase project as your DB):**
+
+1. **Supabase Dashboard** → **Storage** → **New bucket** → name: **`portal-uploads`** → set to **Public** (so download links work).
+2. **Project Settings** → **API** → copy **Project URL** and **service_role** (secret) key.
+3. In **Vercel** → **Environment Variables** add:
+   - `NEXT_PUBLIC_SUPABASE_URL` = your Project URL (e.g. `https://xxxxx.supabase.co`)
+   - `SUPABASE_SERVICE_ROLE_KEY` = the service_role key
+4. **Redeploy.**
+
+Local dev uses the `uploads/` folder when these env vars are not set.
 
 For a production setup, you’d switch to **Vercel Blob** or **S3** (or similar) and change the upload/download routes to use that storage. The app will still run on Vercel for auth, dashboard, messages, profile, and tasks; only file-based features (vault, credit PDF upload, audit PDFs) need storage changes for full production use.

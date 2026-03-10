@@ -9,6 +9,7 @@ import {
 } from "@react-pdf/renderer";
 import path from "path";
 import { writeFile, mkdir } from "fs/promises";
+import { isBlobStorageAvailable, uploadToBlob } from "@/lib/blob";
 
 const styles = StyleSheet.create({
   page: {
@@ -205,6 +206,16 @@ export async function generateAuditPdf(
     ).toBlob();
 
     const buffer = Buffer.from(await blob.arrayBuffer());
+
+    if (isBlobStorageAvailable()) {
+      const blobUrl = await uploadToBlob(
+        buffer,
+        `audits/audit-${Date.now()}.pdf`,
+        { contentType: "application/pdf" }
+      );
+      return blobUrl;
+    }
+
     const dir = path.join(process.cwd(), "uploads", "audits");
     await mkdir(dir, { recursive: true });
     const fileName = `audit-${Date.now()}.pdf`;
