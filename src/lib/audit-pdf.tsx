@@ -923,7 +923,7 @@ export async function generateAuditPdfBuffer(props: AuditPdfProps): Promise<Buff
 function getAuditPdfFileName(clientName: string): string {
   const sanitized =
     (clientName || "client")
-      .replace(/[^\p{L}\p{N}\s]/gu, "")
+      .replace(/[^a-zA-Z0-9\s]/g, "")
       .replace(/\s+/g, "-")
       .replace(/-+/g, "-")
       .replace(/^-|-$/g, "")
