@@ -46,7 +46,7 @@ export function ManualUploadForm() {
         setTimeout(() => {
           if (data.auditId) router.push(`/dashboard/audits/${data.auditId}`);
           else router.push("/dashboard");
-        }, 2800);
+        }, 4000);
         return;
       }
       if (data.auditId) router.push(`/dashboard/audits/${data.auditId}`);
@@ -119,7 +119,7 @@ export function ManualUploadForm() {
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
             <p className="text-sm font-medium text-amber-200">Enter your 3 bureau scores from the report</p>
             <p className="mt-1 text-xs text-slate-400">
-              Scores are read from the PDF when possible. You can also enter them below (300–850) to correct or override. If none are found or entered, scores won&apos;t update.
+              Scores are read from the PDF when possible. Enter them below (300–850) to correct, override, or if the PDF doesn&apos;t auto-fill — that way you always get a complete Credit Report Analysis.
             </p>
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
               <div>
@@ -163,7 +163,7 @@ export function ManualUploadForm() {
           {error && <p className="text-sm text-red-400">{error}</p>}
           {noDataMessage && (
             <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">
-              No credit report data was detected in this file. It&apos;s been saved to your Document Vault. For a full analysis, upload a credit report PDF (e.g. MyFreeScoreNow). Redirecting to your audit…
+              We couldn&apos;t read scores or items from this PDF (it may be image-only or a different format). Your file was saved. Enter your 3 bureau scores above and upload again for a full Credit Report Analysis, or view your audit now.
             </p>
           )}
           <p className="text-xs text-slate-500">

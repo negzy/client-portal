@@ -85,14 +85,23 @@ export async function POST(req: Request) {
     }
   }
 
-  // Extract text from PDF so we can try to read bureau scores (Experian, Equifax, TransUnion)
+  // Extract text from PDF for score and negative-item parsing
   let rawText: string | undefined;
   if ((type === "pdf" || file.type === "application/pdf") && buffer.length > 0) {
     try {
       const { PDFParse } = await import("pdf-parse");
       const parser = new PDFParse({ data: buffer });
       const result = await parser.getText();
-      rawText = result?.text ?? "";
+      rawText = (result && typeof result === "object" && "text" in result)
+        ? String((result as { text?: string }).text ?? "")
+        : "";
+      if (!rawText?.trim() && result && typeof result === "object" && "pages" in result) {
+        const pages = (result as { pages?: Array<{ text?: string }> }).pages;
+        if (Array.isArray(pages)) {
+          rawText = pages.map((p) => (p && typeof p === "object" && "text" in p ? String(p.text ?? "") : "")).join("\n");
+        }
+      }
+      rawText = rawText?.trim() || undefined;
     } catch (e) {
       console.error("PDF text extraction failed:", e);
     }

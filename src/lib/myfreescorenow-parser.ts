@@ -31,7 +31,7 @@ function isValidScore(n: number): boolean {
 
 /**
  * Parse all three bureau scores from report text.
- * Works with both classic and smart view layouts.
+ * Works with both classic and smart view layouts. Uses multiple strategies.
  */
 export function parseScoresFromReport(
   text: string
@@ -40,6 +40,7 @@ export function parseScoresFromReport(
   const t = text.trim();
   if (!t) return out;
 
+  // Strategy 1: bureau name/abbrev followed by 3-digit score
   for (const { key, patterns } of SCORE_PATTERNS) {
     for (const p of patterns) {
       const m = t.match(p);
@@ -52,6 +53,35 @@ export function parseScoresFromReport(
       }
     }
   }
+
+  // Strategy 2: score then bureau (e.g. "691 06/20/2025 Experian" or "691\nExperian")
+  const scoreThenBureau = t.matchAll(/(\d{3})\s*[\d/\s]*\s*(Experian|Equifax|TransUnion)/gi);
+  for (const m of scoreThenBureau) {
+    const score = parseInt(m[1], 10);
+    const bureau = m[2].toLowerCase();
+    if (!isValidScore(score)) continue;
+    if (bureau.includes("experian") && out.Experian == null) out.Experian = score;
+    if (bureau.includes("equifax") && out.Equifax == null) out.Equifax = score;
+    if (bureau.includes("transunion") && out.TransUnion == null) out.TransUnion = score;
+  }
+
+  // Strategy 3: bureau name within ~120 chars of a 3-digit score (any order)
+  for (const key of BUREAUS) {
+    if (out[key] != null) continue;
+    const regex = new RegExp(
+      `(?:${key}[^0-9]{0,120}?(\\d{3})|(\\d{3})[^0-9]{0,120}?${key})`,
+      "i"
+    );
+    const match = t.match(regex);
+    if (match) {
+      const scoreStr = match[1] ?? match[2];
+      if (scoreStr) {
+        const score = parseInt(scoreStr, 10);
+        if (isValidScore(score)) out[key] = score;
+      }
+    }
+  }
+
   return out;
 }
 

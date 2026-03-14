@@ -11,34 +11,41 @@ import path from "path";
 import { writeFile, mkdir } from "fs/promises";
 import { isBlobStorageAvailable, uploadToBlob } from "@/lib/blob";
 
+// Fixed widths for perfect table alignment (points). A4 ~595pt wide, padding 40*2 = 80, content ~515.
+const TABLE_ACCOUNT = 140;
+const TABLE_TYPE = 72;
+const TABLE_EQ = 52;
+const TABLE_EX = 52;
+const TABLE_TU = 52;
+const TABLE_DETAILS = 147;
+
 const styles = StyleSheet.create({
   page: {
-    padding: 40,
+    padding: 36,
     fontFamily: "Helvetica",
     fontSize: 10,
   },
-  // Cover page
   coverTitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#1e293b",
-    marginBottom: 8,
+    marginBottom: 6,
   },
   coverClientName: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "bold",
     color: "#0f172a",
-    marginBottom: 14,
+    marginBottom: 12,
   },
   coverSub: {
     fontSize: 10,
     color: "#475569",
     lineHeight: 1.4,
-    marginBottom: 20,
+    marginBottom: 18,
   },
   coverCreated: {
     fontSize: 10,
     color: "#475569",
-    marginBottom: 24,
+    marginBottom: 20,
   },
   coverPreparedBy: {
     fontSize: 10,
@@ -46,10 +53,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   coverBrand: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "bold",
     color: "#0f172a",
-    marginBottom: 12,
+    marginBottom: 10,
   },
   coverUrl: {
     fontSize: 10,
@@ -57,149 +64,161 @@ const styles = StyleSheet.create({
   },
   pageFooter: {
     position: "absolute",
-    bottom: 28,
-    left: 40,
-    right: 40,
+    bottom: 24,
+    left: 36,
+    right: 36,
     fontSize: 8,
     color: "#94a3b8",
     textAlign: "center",
   },
   pageNum: {
     position: "absolute",
-    bottom: 28,
-    right: 40,
+    bottom: 24,
+    right: 36,
     fontSize: 8,
     color: "#94a3b8",
   },
   eduTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "bold",
     color: "#0f172a",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   eduBody: {
     fontSize: 10,
     color: "#334155",
-    lineHeight: 1.45,
+    lineHeight: 1.5,
     marginBottom: 8,
   },
   eduBox: {
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#f0f9ff",
     padding: 12,
     borderRadius: 4,
     marginVertical: 10,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: "#bae6fd",
   },
-  // Data page
   dataPageTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "bold",
     color: "#0f172a",
-    marginBottom: 4,
+    marginBottom: 2,
   },
   dataPageClient: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "bold",
     color: "#0f172a",
-    marginBottom: 4,
+    marginBottom: 2,
   },
   dataPageSub: {
     fontSize: 9,
     color: "#64748b",
-    marginBottom: 16,
+    marginBottom: 14,
   },
   bureauCol: {
-    flex: 1,
-    marginRight: 8,
+    width: 155,
+    marginRight: 6,
   },
   bureauColLast: {
-    flex: 1,
+    width: 155,
+  },
+  bureauCard: {
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 6,
+    padding: 12,
+    marginBottom: 4,
   },
   bureauHeader: {
     fontSize: 10,
     fontWeight: "bold",
     color: "#0f172a",
     marginBottom: 6,
-    paddingBottom: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
   },
   bureauScore: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "bold",
-    color: "#0f172a",
+    color: "#0c4a6e",
     marginBottom: 8,
   },
   bureauRow: {
     flexDirection: "row",
-    marginBottom: 3,
+    marginBottom: 2,
     fontSize: 9,
   },
   bureauLabel: {
     color: "#64748b",
-    width: "70%",
+    width: 95,
   },
   bureauValue: {
     color: "#1e293b",
-    width: "30%",
+    width: 45,
   },
   threeColRow: {
     flexDirection: "row",
-    marginBottom: 12,
+    marginBottom: 14,
   },
   sectionTitle: {
     fontSize: 11,
     fontWeight: "bold",
     color: "#0f172a",
-    marginTop: 14,
+    marginTop: 12,
     marginBottom: 6,
   },
   sectionText: {
-    fontSize: 9,
+    fontSize: 10,
     color: "#475569",
-    lineHeight: 1.35,
+    lineHeight: 1.45,
     marginBottom: 8,
   },
   usageBox: {
-    backgroundColor: "#f8fafc",
-    padding: 10,
-    borderRadius: 4,
+    backgroundColor: "#f0fdf4",
+    padding: 12,
+    borderRadius: 6,
     marginTop: 6,
     marginBottom: 12,
-    fontSize: 9,
-    color: "#334155",
+    borderWidth: 1,
+    borderColor: "#bbf7d0",
   },
-  // Derogatory table (ref: Account Name | Dispute Type | Equifax | Experian | TransUnion | Details)
+  usageLabel: {
+    fontSize: 10,
+    fontWeight: "bold",
+    color: "#166534",
+    marginBottom: 2,
+  },
+  usageValue: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#15803d",
+  },
   table: {
-    marginTop: 6,
+    marginTop: 8,
   },
   tableHeader: {
     flexDirection: "row",
-    backgroundColor: "#f1f5f9",
+    backgroundColor: "#1e293b",
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    fontSize: 9,
+    fontWeight: "bold",
+    color: "#f8fafc",
+  },
+  tableRow: {
+    flexDirection: "row",
     paddingVertical: 6,
     paddingHorizontal: 6,
     borderBottomWidth: 1,
     borderColor: "#e2e8f0",
-    fontSize: 8,
-    fontWeight: "bold",
-    color: "#475569",
-  },
-  tableRow: {
-    flexDirection: "row",
-    paddingVertical: 5,
-    paddingHorizontal: 6,
-    borderBottomWidth: 1,
-    borderColor: "#f1f5f9",
-    fontSize: 8,
+    fontSize: 9,
     color: "#334155",
   },
-  colAccount: { width: "24%" },
-  colDisputeType: { width: "14%" },
-  colEq: { width: "12%", textAlign: "center" },
-  colEx: { width: "12%", textAlign: "center" },
-  colTu: { width: "12%", textAlign: "center" },
-  colDetails: { width: "26%", fontSize: 7 },
+  colAccount: { width: TABLE_ACCOUNT, paddingRight: 6 },
+  colDisputeType: { width: TABLE_TYPE, paddingRight: 4 },
+  colEq: { width: TABLE_EQ, textAlign: "center", paddingRight: 4 },
+  colEx: { width: TABLE_EX, textAlign: "center", paddingRight: 4 },
+  colTu: { width: TABLE_TU, textAlign: "center", paddingRight: 4 },
+  colDetails: { width: TABLE_DETAILS, fontSize: 8 },
 });
 
 export type AuditNegativeItem = {
@@ -252,41 +271,43 @@ function AuditDocument(props: AuditPdfProps) {
   const transUnionScore = getScore("TransUnion");
 
   const bureauStats = (score: string, label: string, isLast?: boolean) => (
-    <View style={isLast ? styles.bureauColLast : styles.bureauCol}>
-      <Text style={styles.bureauHeader}>{label}</Text>
-      <Text style={styles.bureauScore}>{score}</Text>
-      <Text style={[styles.bureauRow, styles.bureauValue]}>{reportDateStr}</Text>
-      <View style={styles.bureauRow}>
-        <Text style={styles.bureauLabel}>Accounts</Text>
-        <Text style={styles.bureauValue}>—</Text>
-      </View>
-      <View style={styles.bureauRow}>
-        <Text style={styles.bureauLabel}>Inquiries</Text>
-        <Text style={styles.bureauValue}>{props.hardInquiriesCount}</Text>
-      </View>
-      <View style={styles.bureauRow}>
-        <Text style={styles.bureauLabel}>Public Records</Text>
-        <Text style={styles.bureauValue}>0</Text>
-      </View>
-      <View style={styles.bureauRow}>
-        <Text style={styles.bureauLabel}>Collections</Text>
-        <Text style={styles.bureauValue}>{props.collectionsCount}</Text>
-      </View>
-      <View style={styles.bureauRow}>
-        <Text style={styles.bureauLabel}>Current Past Due</Text>
-        <Text style={styles.bureauValue}>0</Text>
-      </View>
-      <View style={styles.bureauRow}>
-        <Text style={styles.bureauLabel}>Prior Past Due</Text>
-        <Text style={styles.bureauValue}>0</Text>
-      </View>
-      <View style={styles.bureauRow}>
-        <Text style={styles.bureauLabel}>Positive</Text>
-        <Text style={styles.bureauValue}>—</Text>
-      </View>
-      <View style={styles.bureauRow}>
-        <Text style={styles.bureauLabel}>Negative</Text>
-        <Text style={styles.bureauValue}>{props.negativeCount}</Text>
+    <View style={[isLast ? styles.bureauColLast : styles.bureauCol]}>
+      <View style={styles.bureauCard}>
+        <Text style={styles.bureauHeader}>{label}</Text>
+        <Text style={styles.bureauScore}>{score}</Text>
+        <Text style={[styles.bureauRow, styles.bureauValue]}>{reportDateStr}</Text>
+        <View style={styles.bureauRow}>
+          <Text style={styles.bureauLabel}>Accounts</Text>
+          <Text style={styles.bureauValue}>—</Text>
+        </View>
+        <View style={styles.bureauRow}>
+          <Text style={styles.bureauLabel}>Inquiries</Text>
+          <Text style={styles.bureauValue}>{props.hardInquiriesCount}</Text>
+        </View>
+        <View style={styles.bureauRow}>
+          <Text style={styles.bureauLabel}>Public Records</Text>
+          <Text style={styles.bureauValue}>0</Text>
+        </View>
+        <View style={styles.bureauRow}>
+          <Text style={styles.bureauLabel}>Collections</Text>
+          <Text style={styles.bureauValue}>{props.collectionsCount}</Text>
+        </View>
+        <View style={styles.bureauRow}>
+          <Text style={styles.bureauLabel}>Current Past Due</Text>
+          <Text style={styles.bureauValue}>0</Text>
+        </View>
+        <View style={styles.bureauRow}>
+          <Text style={styles.bureauLabel}>Prior Past Due</Text>
+          <Text style={styles.bureauValue}>0</Text>
+        </View>
+        <View style={styles.bureauRow}>
+          <Text style={styles.bureauLabel}>Positive</Text>
+          <Text style={styles.bureauValue}>—</Text>
+        </View>
+        <View style={styles.bureauRow}>
+          <Text style={styles.bureauLabel}>Negative</Text>
+          <Text style={styles.bureauValue}>{props.negativeCount}</Text>
+        </View>
       </View>
     </View>
   );
@@ -325,10 +346,12 @@ function AuditDocument(props: AuditPdfProps) {
         <Text style={styles.eduBody}>
           Having a great credit score is key to the rest of your financial life. It can mean the difference between home ownership and renting for the rest of your life. You will struggle to get approved for Credit Cards, Car Loans, and Mortgages — or pay tens of thousands more in interest.
         </Text>
-        <Text style={styles.eduTitle}>Real World Auto Loan Example</Text>
-        <Text style={styles.eduBody}>
-          In this example, having a 710 vs a 524 would save you almost $10,000 on the life of the loan. Having a high score will save you many thousands of dollars on some of the most important purchases of your life.
-        </Text>
+        <View style={styles.eduBox}>
+          <Text style={[styles.eduTitle, { marginBottom: 4 }]}>Real World Auto Loan Example</Text>
+          <Text style={styles.eduBody}>
+            Having a 710 vs a 524 would save you almost $9,955 on the life of the loan. Low score (524): $28,500 at 15% = $678/mo. With 710: 3% = $512/mo. Having a high score will save you many thousands of dollars.
+          </Text>
+        </View>
         <Text style={styles.pageFooter}>Visit Us Online at: www.thecredithub.io</Text>
         <Text style={styles.pageNum}>2 of {totalPages}</Text>
       </Page>
@@ -339,10 +362,12 @@ function AuditDocument(props: AuditPdfProps) {
         <Text style={styles.eduBody}>
           This will be the single largest purchase most of us will ever make in our lifetimes — make sure you have a score well above 650 to take advantage of better interest rates.
         </Text>
-        <Text style={styles.eduTitle}>Real World Home Loan Example</Text>
-        <Text style={styles.eduBody}>
-          In this example, having a 710 vs a 524 would save you over $140,000 on the life of the loan. The sooner you start improving your credit, the sooner we can get you results!
-        </Text>
+        <View style={styles.eduBox}>
+          <Text style={[styles.eduTitle, { marginBottom: 4 }]}>Real World Home Loan Example</Text>
+          <Text style={styles.eduBody}>
+            Having a 710 vs a 524 could save you over $143,328 on the life of the loan. $250k at 6.5% (low score) = $1,580/mo vs 3.9% (710) = $1,182/mo. The sooner you start improving your credit, the sooner we can get you results!
+          </Text>
+        </View>
         <Text style={styles.pageFooter}>Visit Us Online at: www.thecredithub.io</Text>
         <Text style={styles.pageNum}>3 of {totalPages}</Text>
       </Page>
@@ -353,8 +378,10 @@ function AuditDocument(props: AuditPdfProps) {
         <Text style={styles.eduBody}>
           There are a lot of factors that go into your credit score. Your score will also vary depending on which Credit Bureau the lender decides to use. Credit scores range from 300-850. The higher your score, the more likely you will be approved for loans at better rates.
         </Text>
-        <Text style={styles.eduTitle}>Score Factors</Text>
-        <Text style={styles.eduBody}>35% Payment History · 30% Amount Owed · 15% Credit History · 10% Types of Credit · 10% Applying for Credit</Text>
+        <View style={styles.eduBox}>
+          <Text style={[styles.eduTitle, { marginBottom: 4 }]}>Score Factors</Text>
+          <Text style={styles.eduBody}>35% Payment History · 30% Amount Owed · 15% Credit History · 10% Types of Credit · 10% Applying for Credit</Text>
+        </View>
         <Text style={styles.pageFooter}>Visit Us Online at: www.thecredithub.io</Text>
         <Text style={styles.pageNum}>4 of {totalPages}</Text>
       </Page>
@@ -376,7 +403,8 @@ function AuditDocument(props: AuditPdfProps) {
           If you're carrying high balances, try to pay your balances down to below 25% of the available credit limit of each card. Never spend more than that, even if you pay the bill off in full each month.
         </Text>
         <View style={styles.usageBox}>
-          <Text>Avg Usage {props.utilizationPct != null ? `${props.utilizationPct}%` : "—"}</Text>
+          <Text style={styles.usageLabel}>Avg Usage</Text>
+          <Text style={styles.usageValue}>{props.utilizationPct != null ? `${props.utilizationPct}%` : "—"}</Text>
         </View>
 
         <Text style={styles.pageFooter}>Visit Us Online at: www.thecredithub.io</Text>
