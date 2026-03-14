@@ -4,6 +4,7 @@ import { generateAuditPdf } from "./audit-pdf";
 import {
   parseScoresFromReport,
   parseNegativeItemsFromReport,
+  parseRevolvingFromReport,
 } from "./myfreescorenow-parser";
 
 export type NegativeItemInput = {
@@ -27,6 +28,10 @@ export type CreditAnalysis = {
   bankruptciesCount: number;
   hardInquiriesCount: number;
   utilizationPct: number | null;
+  /** Total revolving (credit card) balance from report, when parsed */
+  totalRevolvingBalance: number | null;
+  /** Total revolving (credit card) limit from report, when parsed */
+  totalRevolvingLimit: number | null;
   openAccountsCount: number;
   positiveTradelinesCount: number;
   summaryIssues: string;
@@ -112,14 +117,17 @@ export function analyzeCreditReport(params: {
     }
     return 0;
   })();
+  const revolving = rawText ? parseRevolvingFromReport(rawText) : null;
   const utilizationPct: number | null = (() => {
     const m = rawText?.match(/(?:utilization|util)\s*[:\s]*(\d+(?:\.\d+)?)\s*%?/i);
     if (m) {
       const n = parseFloat(m[1]);
       if (Number.isFinite(n) && n >= 0 && n <= 100) return n;
     }
-    return null;
+    return revolving?.utilizationPct ?? null;
   })();
+  const totalRevolvingBalance = revolving?.totalRevolvingBalance ?? null;
+  const totalRevolvingLimit = revolving?.totalRevolvingLimit ?? null;
   const openAccountsCount = rawText?.match(/\bopen\s+account/gi)?.length ?? 0;
   const positiveTradelinesCount = 0;
 
@@ -187,6 +195,8 @@ export function analyzeCreditReport(params: {
     bankruptciesCount: 0,
     hardInquiriesCount,
     utilizationPct,
+    totalRevolvingBalance,
+    totalRevolvingLimit,
     openAccountsCount,
     positiveTradelinesCount,
     summaryIssues,
@@ -213,6 +223,8 @@ export async function createAuditFromAnalysis(
     chargeOffsCount: analysis.chargeOffsCount,
     hardInquiriesCount: analysis.hardInquiriesCount,
     utilizationPct: analysis.utilizationPct,
+    totalRevolvingBalance: analysis.totalRevolvingBalance,
+    totalRevolvingLimit: analysis.totalRevolvingLimit,
     summaryIssues: analysis.summaryIssues,
     recommendedSteps: analysis.recommendedSteps,
     capitalReadinessNotes: analysis.capitalReadinessNotes,

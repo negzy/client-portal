@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   Zap,
   FileInput,
@@ -104,6 +105,26 @@ export default function HomePage() {
               <LayoutDashboard className="h-5 w-5 text-orange-500" />
               Client portal
             </span>
+          </div>
+        </div>
+      </section>
+
+      {/* Credit Report Analysis preview */}
+      <section className="border-b border-white/10 px-4 py-16 md:py-20">
+        <div className="mx-auto max-w-5xl text-center">
+          <h2 className="text-2xl font-bold md:text-3xl">Your Credit Report Analysis</h2>
+          <p className="mt-4 text-slate-400">
+            Every client gets a clean, professional PDF audit with scores, derogatory items, and next steps — branded for you.
+          </p>
+          <div className="mt-10 overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-2xl">
+            <Image
+              src="/audit-preview.png"
+              alt="Credit Report Analysis PDF preview"
+              width={1000}
+              height={620}
+              className="w-full object-contain"
+              priority
+            />
           </div>
         </div>
       </section>

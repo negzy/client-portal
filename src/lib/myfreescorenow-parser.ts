@@ -188,25 +188,69 @@ export function parseNegativeItemsFromReport(text: string): ParsedNegativeItem[]
     const balance = parseBalance(line);
     const bureau: Bureau = bureauInLine ?? currentBureau ?? "Experian";
 
-    // Creditor/account name: often the first substantial phrase (skip "Experian", "Equifax", page numbers)
-    let accountName = line
-      .replace(/\b(Experian|Equifax|TransUnion|EX|EQ|TU)\b/gi, "")
-      .replace(/\$\d[\d,.]*/g, "")
-      .replace(/\d{3}-\d{2}-\d{4}/g, "") // SSN
-      .replace(/^\s*[\d.]+\s*/, "")
-      .trim();
-    const firstNegativeWord = lineLower.match(
-      new RegExp(
-        "(.{0,80})(" + NEGATIVE_TYPES.slice(0, 12).join("|").replace(/\s+/g, "\\s+") + ")",
-        "i"
-      )
-    );
-    if (firstNegativeWord) {
-      const before = firstNegativeWord[1].trim();
-      const possibleName = before.replace(/\b(Experian|Equifax|TransUnion|EX|EQ|TU)\b/gi, "").trim();
-      if (possibleName.length >= 2 && possibleName.length <= 80) accountName = possibleName;
+    // Blocklist: never use these as account name (score partners, product names, headers)
+    const NOT_ACCOUNT_NAME =
+      /vantage\s*score|credit\s*score\s*partner|partnered|\.0\s*credit|experian\s*score|equifax\s*score|transunion\s*score|fico|score\s*summary|your\s*score|report\s*date|account\s*number\s*:\s*\d|^\s*\d{4}\s*$/i;
+
+    function looksLikeAccountName(s: string): boolean {
+      const t = s.trim();
+      if (t.length < 3 || t.length > 80) return false;
+      if (NOT_ACCOUNT_NAME.test(t)) return false;
+      if (negativeTypeRegex.test(t) || sectionHeaders.some((r) => r.test(t))) return false;
+      if (/^(Experian|Equifax|TransUnion|EX|EQ|TU|account|creditor|name|bureau)$/i.test(t)) return false;
+      if (/^\d+$|^\d+\s*[-/]\s*\d+/.test(t)) return false;
+      if (/\d{3}-\d{2}-\d{4}/.test(t)) return false;
+      return true;
+    }
+
+    // Prefer lines that look like creditor/card names (JPMCB, Chase, Capital One, "card", "bank", etc.)
+    function creditorScore(s: string): number {
+      const lower = s.trim().toLowerCase();
+      if (NOT_ACCOUNT_NAME.test(lower)) return -1;
+      let score = 0;
+      if (/\b(card|bank|jpmcb|chase|capital\s*one|citi|discover|amex|wells\s*fargo|synchrony)\b/i.test(lower)) score += 2;
+      if (/^[A-Za-z0-9\s\-&]+$/.test(s) && s.length <= 50) score += 1;
+      if (/\d{4}\s*\*+\s*$/.test(s)) score += 1; // "1234****" style
+      return score;
+    }
+
+    let accountName = "";
+    let bestScore = -1;
+    for (let j = 1; j <= 3 && i - j >= 0; j++) {
+      const prev = lines[i - j].trim();
+      if (!looksLikeAccountName(prev)) continue;
+      const candidate = prev.replace(/\b(Experian|Equifax|TransUnion|EX|EQ|TU)\b/gi, "").trim();
+      if (candidate.length < 3) continue;
+      const s = creditorScore(candidate);
+      if (s > bestScore) {
+        bestScore = s;
+        accountName = candidate;
+      }
+    }
+
+    // Fallback: text before the negative keyword on the current line (still apply blocklist)
+    if (accountName.length < 2) {
+      let fromLine = line
+        .replace(/\b(Experian|Equifax|TransUnion|EX|EQ|TU)\b/gi, "")
+        .replace(/\$\d[\d,.]*/g, "")
+        .replace(/\d{3}-\d{2}-\d{4}/g, "")
+        .replace(/^\s*[\d.]+\s*/, "")
+        .trim();
+      const firstNegativeWord = lineLower.match(
+        new RegExp(
+          "(.{0,80})(" + NEGATIVE_TYPES.slice(0, 12).join("|").replace(/\s+/g, "\\s+") + ")",
+          "i"
+        )
+      );
+      if (firstNegativeWord) {
+        const before = firstNegativeWord[1].trim();
+        fromLine = before.replace(/\b(Experian|Equifax|TransUnion|EX|EQ|TU)\b/gi, "").trim();
+      }
+      if (fromLine.length >= 2 && fromLine.length <= 80 && !NOT_ACCOUNT_NAME.test(fromLine))
+        accountName = fromLine;
     }
     if (accountName.length < 2) accountName = line.slice(0, 60).trim() || "Unknown account";
+    if (NOT_ACCOUNT_NAME.test(accountName)) accountName = "Unknown account";
 
     // Normalize for dedupe: same name + bureau + type-ish
     const typeMatch = lineLower.match(/collection|charge-?off|charge\s*off|late\s*\d+|delinquent|derogatory/i);
@@ -235,6 +279,7 @@ export function parseNegativeItemsFromReport(text: string): ParsedNegativeItem[]
 
   // If we found no items by line scan, try block scan: split by double newline and look for blocks containing negative keywords + bureau
   if (items.length === 0 && t.length > 200) {
+    const NOT_ACCOUNT = /vantage\s*score|credit\s*score\s*partner|partnered|\.0\s*credit/i;
     const blocks = t.split(/\n\s*\n+/);
     for (const block of blocks) {
       if (!negativeTypeRegex.test(block) && !/\bcollection\b/i.test(block)) continue;
@@ -243,7 +288,8 @@ export function parseNegativeItemsFromReport(text: string): ParsedNegativeItem[]
         (/\bExperian\b/i.test(block) ? "Experian" : /\bEquifax\b/i.test(block) ? "Equifax" : "TransUnion");
       const balance = parseBalance(block);
       const nameMatch = block.match(/^([^\n]{5,80})/m);
-      const accountName = (nameMatch ? nameMatch[1].trim() : block.slice(0, 60).trim()) || "Unknown account";
+      let accountName = (nameMatch ? nameMatch[1].trim() : block.slice(0, 60).trim()) || "Unknown account";
+      if (NOT_ACCOUNT.test(accountName)) accountName = "Unknown account";
       const typeMatch = block.match(/collection|charge-?off|charge\s*off|late\s*\d+|delinquent/i);
       const accountType = typeMatch ? typeMatch[0] : "Negative";
       const dedupeKey = `${accountName}|${bureau}|${accountType}`;
@@ -260,4 +306,96 @@ export function parseNegativeItemsFromReport(text: string): ParsedNegativeItem[]
   }
 
   return items;
+}
+
+/** Match dollar amounts in text: $1,234.56 or 1234.56 */
+function parseDollarAmounts(text: string): number[] {
+  const amounts: number[] = [];
+  const re = /\$?\s*([\d,]+(?:\.\d{2})?)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const n = parseFloat(m[1].replace(/,/g, ""));
+    if (Number.isFinite(n) && n >= 0 && n < 10_000_000) amounts.push(n);
+  }
+  return amounts;
+}
+
+/**
+ * Parse revolving (credit card) totals from MyFreeScoreNow-style report text.
+ * Looks for "Revolving", "Credit limit", "Balance", "High balance", "Total", "Available credit".
+ * Returns total balance, total limit, and computed utilization % for the PDF.
+ */
+export function parseRevolvingFromReport(text: string): {
+  totalRevolvingBalance: number | null;
+  totalRevolvingLimit: number | null;
+  utilizationPct: number | null;
+} {
+  const t = text.trim();
+  if (!t || t.length < 100) return { totalRevolvingBalance: null, totalRevolvingLimit: null, utilizationPct: null };
+
+  const lower = t.toLowerCase();
+  let totalBalance: number | null = null;
+  let totalLimit: number | null = null;
+
+  // MyFreeScoreNow / common patterns: "Total balance" $X, "Credit limit" $Y, "Total credit" $Z, "Revolving balance"
+  const balancePatterns = [
+    /total\s+(?:revolving\s+)?balance\s*[:\s]*\$?\s*([\d,]+(?:\.\d{2})?)/i,
+    /revolving\s+balance\s*[:\s]*\$?\s*([\d,]+(?:\.\d{2})?)/i,
+    /(?:total\s+)?balance\s*[:\s]*\$?\s*([\d,]+(?:\.\d{2})?)/i,
+    /balances?\s+(?:total|are)\s*\$?\s*([\d,]+(?:\.\d{2})?)/i,
+  ];
+  for (const p of balancePatterns) {
+    const m = t.match(p);
+    if (m) {
+      const n = parseFloat(m[1].replace(/,/g, ""));
+      if (Number.isFinite(n) && n >= 0) {
+        totalBalance = n;
+        break;
+      }
+    }
+  }
+
+  const limitPatterns = [
+    /total\s+(?:revolving\s+)?(?:credit\s+)?limit\s*[:\s]*\$?\s*([\d,]+(?:\.\d{2})?)/i,
+    /(?:credit\s+)?limit\s*[:\s]*\$?\s*([\d,]+(?:\.\d{2})?)/i,
+    /available\s+credit\s*[:\s]*\$?\s*([\d,]+(?:\.\d{2})?)/i,
+    /total\s+credit\s*[:\s]*\$?\s*([\d,]+(?:\.\d{2})?)/i,
+    /revolving\s+limit\s*[:\s]*\$?\s*([\d,]+(?:\.\d{2})?)/i,
+  ];
+  for (const p of limitPatterns) {
+    const m = t.match(p);
+    if (m) {
+      const n = parseFloat(m[1].replace(/,/g, ""));
+      if (Number.isFinite(n) && n > 0) {
+        totalLimit = n;
+        break;
+      }
+    }
+  }
+
+  // Fallback: sum amounts in a "Revolving" or "Credit card" section (first block after that heading)
+  if (totalBalance == null || totalLimit == null) {
+    const revolvingSection = t.match(/(?:revolving|credit\s*card|revolving\s+account)[\s\S]{0,2000}?(?=(?:negative|collection|derogatory|public\s+record|inquir)|$)/i);
+    if (revolvingSection) {
+      const section = revolvingSection[0];
+      const amounts = parseDollarAmounts(section);
+      if (amounts.length >= 2) {
+        const small = Math.min(...amounts);
+        const large = Math.max(...amounts);
+        if (totalBalance == null && totalLimit == null) {
+          totalBalance = small;
+          totalLimit = large;
+        } else if (totalBalance == null) totalBalance = amounts[0];
+        else if (totalLimit == null) totalLimit = amounts[0];
+      }
+    }
+  }
+
+  let utilizationPct: number | null = null;
+  if (totalBalance != null && totalLimit != null && totalLimit > 0) {
+    const pct = (totalBalance / totalLimit) * 100;
+    utilizationPct = Math.round(pct * 100) / 100;
+  }
+
+  return { totalRevolvingBalance: totalBalance, totalRevolvingLimit: totalLimit, utilizationPct };
 }

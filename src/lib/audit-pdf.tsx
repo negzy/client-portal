@@ -6,18 +6,23 @@ import {
   View,
   StyleSheet,
   pdf,
+  Image,
 } from "@react-pdf/renderer";
 import path from "path";
+import fs from "fs";
 import { writeFile, mkdir } from "fs/promises";
 import { isBlobStorageAvailable, uploadToBlob } from "@/lib/blob";
 
-// Fixed widths for perfect table alignment (points). A4 ~595pt wide, padding 40*2 = 80, content ~515.
-const TABLE_ACCOUNT = 140;
-const TABLE_TYPE = 72;
-const TABLE_EQ = 52;
-const TABLE_EX = 52;
-const TABLE_TU = 52;
-const TABLE_DETAILS = 147;
+const BRAND = {
+  name: "The Credit Hub",
+  url: "www.thecredithub.io",
+};
+
+// Table column widths (points)
+const COL_ACCOUNT = 130;
+const COL_TYPE = 58;
+const COL_BUREAU = 42;
+const COL_DETAILS = 160;
 
 const styles = StyleSheet.create({
   page: {
@@ -25,164 +30,301 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica",
     fontSize: 10,
   },
+  // Cover (Page 1) – centered, clean
+  coverLogo: {
+    fontSize: 11,
+    fontWeight: "bold",
+    color: "#0ea5e9",
+    marginBottom: 24,
+    textAlign: "center",
+  },
+  logoImage: {
+    width: 140,
+    height: 44,
+    marginBottom: 20,
+    alignSelf: "center",
+  },
+  envelopeIconImage: {
+    width: 48,
+    height: 48,
+    marginBottom: 12,
+    alignSelf: "center",
+  },
   coverTitle: {
-    fontSize: 13,
-    color: "#1e293b",
-    marginBottom: 6,
+    fontSize: 12,
+    color: "#64748b",
+    marginBottom: 4,
+    textAlign: "center",
   },
   coverClientName: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#0f172a",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  coverSub: {
+    fontSize: 9,
+    color: "#64748b",
+    lineHeight: 1.5,
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  coverCreated: {
+    fontSize: 11,
+    fontWeight: "bold",
+    color: "#0f172a",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  coverCard: {
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 6,
+    padding: 14,
+    marginBottom: 12,
+  },
+  coverScoreRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  coverScoreBlock: {
+    alignItems: "center",
+    width: "30%",
+  },
+  coverScoreValue: {
     fontSize: 20,
     fontWeight: "bold",
     color: "#0f172a",
-    marginBottom: 12,
   },
-  coverSub: {
-    fontSize: 10,
-    color: "#475569",
-    lineHeight: 1.4,
-    marginBottom: 18,
-  },
-  coverCreated: {
-    fontSize: 10,
-    color: "#475569",
-    marginBottom: 20,
-  },
-  coverPreparedBy: {
-    fontSize: 10,
+  coverScoreLabel: {
+    fontSize: 8,
     color: "#64748b",
-    marginBottom: 4,
+    marginTop: 2,
+  },
+  miniTableHeader: {
+    flexDirection: "row",
+    backgroundColor: "#1e293b",
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    fontSize: 8,
+    fontWeight: "bold",
+    color: "#fff",
+    marginBottom: 2,
+  },
+  miniTableRow: {
+    flexDirection: "row",
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    fontSize: 8,
+    color: "#334155",
+    borderBottomWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  coverPrepared: {
+    fontSize: 9,
+    color: "#64748b",
+    marginTop: 20,
+    marginBottom: 2,
+    textAlign: "center",
   },
   coverBrand: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "bold",
     color: "#0f172a",
-    marginBottom: 10,
+    marginBottom: 4,
+    textAlign: "center",
   },
   coverUrl: {
-    fontSize: 10,
+    fontSize: 9,
     color: "#0ea5e9",
+    textAlign: "center",
   },
-  pageFooter: {
+  // Footer (all pages)
+  footer: {
     position: "absolute",
-    bottom: 24,
+    bottom: 20,
     left: 36,
     right: 36,
     fontSize: 8,
-    color: "#94a3b8",
+    color: "#64748b",
     textAlign: "center",
+  },
+  footerLink: {
+    color: "#0ea5e9",
   },
   pageNum: {
     position: "absolute",
-    bottom: 24,
+    bottom: 20,
     right: 36,
     fontSize: 8,
     color: "#94a3b8",
   },
+  // Page 2 – Understanding Credit Scores
   eduTitle: {
-    fontSize: 13,
-    fontWeight: "bold",
-    color: "#0f172a",
-    marginBottom: 8,
-  },
-  eduBody: {
-    fontSize: 10,
-    color: "#334155",
-    lineHeight: 1.5,
-    marginBottom: 8,
-  },
-  eduBox: {
-    backgroundColor: "#f0f9ff",
-    padding: 12,
-    borderRadius: 4,
-    marginVertical: 10,
-    borderWidth: 1,
-    borderColor: "#bae6fd",
-  },
-  dataPageTitle: {
-    fontSize: 13,
-    fontWeight: "bold",
-    color: "#0f172a",
-    marginBottom: 2,
-  },
-  dataPageClient: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#0f172a",
+    color: "#1e293b",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  eduSub: {
+    fontSize: 10,
+    color: "#64748b",
+    lineHeight: 1.5,
+    marginBottom: 14,
+    textAlign: "center",
+  },
+  eduBox: {
+    backgroundColor: "#f1f5f9",
+    padding: 12,
+    borderRadius: 4,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: "#1e40af",
+  },
+  eduBoxTitle: {
+    fontSize: 11,
+    fontWeight: "bold",
+    color: "#1e293b",
+    marginBottom: 6,
+  },
+  eduBullet: {
+    flexDirection: "row",
+    marginBottom: 4,
+    fontSize: 9,
+    color: "#334155",
+  },
+  eduCheck: {
+    marginRight: 6,
+    color: "#1e40af",
+  },
+  bureauSectionTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#1e293b",
+    marginTop: 14,
+    marginBottom: 8,
+  },
+  bureauLogosRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 12,
+  },
+  bureauLogoText: {
+    fontSize: 10,
+    fontWeight: "bold",
+    color: "#475569",
+  },
+  scoreFactorsRow: {
+    flexDirection: "row",
+    marginTop: 10,
+  },
+  scoreFactorsList: {
+    flex: 1,
+    fontSize: 9,
+    color: "#334155",
+    lineHeight: 1.8,
+  },
+  // Page 3 – Bureau cards + Usage
+  dataPageTitle: {
+    fontSize: 12,
+    color: "#64748b",
     marginBottom: 2,
+    textAlign: "center",
+  },
+  dataPageClient: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#0f172a",
+    marginBottom: 4,
+    textAlign: "center",
   },
   dataPageSub: {
     fontSize: 9,
     color: "#64748b",
     marginBottom: 14,
+    textAlign: "center",
+    lineHeight: 1.5,
+  },
+  threeColRow: {
+    flexDirection: "row",
+    marginBottom: 14,
+    gap: 10,
   },
   bureauCol: {
-    width: 155,
-    marginRight: 6,
-  },
-  bureauColLast: {
-    width: 155,
+    flex: 1,
+    minWidth: 0,
   },
   bureauCard: {
     backgroundColor: "#f8fafc",
     borderWidth: 1,
     borderColor: "#e2e8f0",
     borderRadius: 6,
-    padding: 12,
-    marginBottom: 4,
+    padding: 10,
   },
-  bureauHeader: {
-    fontSize: 10,
-    fontWeight: "bold",
-    color: "#0f172a",
-    marginBottom: 6,
-  },
-  bureauScore: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#0c4a6e",
-    marginBottom: 8,
-  },
-  bureauRow: {
-    flexDirection: "row",
-    marginBottom: 2,
+  bureauCardHeader: {
     fontSize: 9,
+    fontWeight: "bold",
+    marginBottom: 4,
+    textAlign: "center",
   },
-  bureauLabel: {
-    color: "#64748b",
-    width: 95,
-  },
-  bureauValue: {
-    color: "#1e293b",
-    width: 45,
-  },
-  threeColRow: {
-    flexDirection: "row",
-    marginBottom: 14,
-  },
-  sectionTitle: {
-    fontSize: 11,
+  bureauCardHeaderEq: { color: "#dc2626" },
+  bureauCardHeaderEx: { color: "#7c3aed" },
+  bureauCardHeaderTu: { color: "#2563eb" },
+  bureauScore: {
+    fontSize: 22,
     fontWeight: "bold",
     color: "#0f172a",
-    marginTop: 12,
-    marginBottom: 6,
+    textAlign: "center",
+    marginBottom: 2,
   },
-  sectionText: {
-    fontSize: 10,
-    color: "#475569",
-    lineHeight: 1.45,
+  bureauDate: {
+    fontSize: 8,
+    color: "#64748b",
+    textAlign: "center",
     marginBottom: 8,
+  },
+  bureauStatRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    fontSize: 8,
+    marginBottom: 2,
+  },
+  bureauStatLabel: { color: "#64748b" },
+  bureauStatValue: { color: "#0f172a" },
+  bureauPositiveNegative: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 6,
+    fontSize: 8,
+  },
+  usageSectionTitle: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#0f172a",
+    marginTop: 14,
+    marginBottom: 6,
+    textAlign: "center",
+  },
+  usageIntro: {
+    fontSize: 9,
+    color: "#64748b",
+    lineHeight: 1.5,
+    marginBottom: 8,
+    textAlign: "center",
   },
   usageBox: {
     backgroundColor: "#f0fdf4",
-    padding: 12,
+    padding: 10,
     borderRadius: 6,
-    marginTop: 6,
-    marginBottom: 12,
     borderWidth: 1,
     borderColor: "#bbf7d0",
   },
   usageLabel: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "bold",
     color: "#166534",
     marginBottom: 2,
@@ -192,17 +334,51 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#15803d",
   },
-  table: {
-    marginTop: 8,
+  usageScale: {
+    flexDirection: "row",
+    marginTop: 10,
+    alignItems: "center",
+  },
+  usageScaleSegment: {
+    flex: 1,
+    paddingVertical: 4,
+    alignItems: "center",
+  },
+  usageScaleLabel: {
+    fontSize: 7,
+    color: "#64748b",
+    marginTop: 2,
+  },
+  // Page 4 – Derogatory
+  derogTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#dc2626",
+    marginBottom: 6,
+    textAlign: "center",
+  },
+  derogSub: {
+    fontSize: 10,
+    color: "#0f172a",
+    marginBottom: 4,
+    textAlign: "center",
+  },
+  derogSubBold: { fontWeight: "bold", color: "#dc2626" },
+  derogDesc: {
+    fontSize: 9,
+    color: "#64748b",
+    lineHeight: 1.4,
+    marginBottom: 12,
+    textAlign: "center",
   },
   tableHeader: {
     flexDirection: "row",
-    backgroundColor: "#1e293b",
+    backgroundColor: "#1e3a5f",
     paddingVertical: 8,
     paddingHorizontal: 6,
     fontSize: 9,
     fontWeight: "bold",
-    color: "#f8fafc",
+    color: "#fff",
   },
   tableRow: {
     flexDirection: "row",
@@ -213,12 +389,48 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: "#334155",
   },
-  colAccount: { width: TABLE_ACCOUNT, paddingRight: 6 },
-  colDisputeType: { width: TABLE_TYPE, paddingRight: 4 },
-  colEq: { width: TABLE_EQ, textAlign: "center", paddingRight: 4 },
-  colEx: { width: TABLE_EX, textAlign: "center", paddingRight: 4 },
-  colTu: { width: TABLE_TU, textAlign: "center", paddingRight: 4 },
-  colDetails: { width: TABLE_DETAILS, fontSize: 8 },
+  colAccount: { width: COL_ACCOUNT, paddingRight: 4 },
+  colType: { width: COL_TYPE, paddingRight: 4 },
+  colEq: { width: COL_BUREAU, textAlign: "center", paddingRight: 2 },
+  colEx: { width: COL_BUREAU, textAlign: "center", paddingRight: 2 },
+  colTu: { width: COL_BUREAU, textAlign: "center", paddingRight: 2 },
+  colDetails: { width: COL_DETAILS, fontSize: 8 },
+  negText: { color: "#dc2626", fontSize: 8 },
+  noneText: { color: "#0ea5e9", fontSize: 8 },
+  // Page 5 – Let's Get Started
+  ctaIcon: {
+    fontSize: 32,
+    textAlign: "center",
+    marginBottom: 12,
+    color: "#1e40af",
+  },
+  ctaTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#0f172a",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  ctaBody: {
+    fontSize: 10,
+    color: "#475569",
+    lineHeight: 1.5,
+    marginBottom: 24,
+    textAlign: "center",
+  },
+  ctaBrandBox: {
+    backgroundColor: "#f1f5f9",
+    padding: 20,
+    borderRadius: 6,
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  ctaBrand: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#0f172a",
+    marginBottom: 6,
+  },
 });
 
 export type AuditNegativeItem = {
@@ -238,25 +450,39 @@ type AuditPdfProps = {
   chargeOffsCount: number;
   hardInquiriesCount: number;
   utilizationPct: number | null;
+  totalRevolvingBalance?: number | null;
+  totalRevolvingLimit?: number | null;
   summaryIssues: string;
   recommendedSteps: string;
   capitalReadinessNotes: string;
   negativeItems?: AuditNegativeItem[];
+  /** Optional absolute path to logo image (e.g. public/audit-assets/logo.png) for cover and CTA */
+  logoPath?: string;
+  /** Optional absolute path to envelope icon (e.g. public/audit-assets/icon-envelope.png) for Let's Get Started page */
+  envelopeIconPath?: string;
 };
 
 function formatCreatedDate(d: Date) {
   const months = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
   const day = d.getDate();
-  const suffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
+  const suffix =
+    day === 1 || day === 21 || day === 31
+      ? "st"
+      : day === 2 || day === 22
+        ? "nd"
+        : day === 3 || day === 23
+          ? "rd"
+          : "th";
   return `${months[d.getMonth()]} ${day}${suffix}, ${d.getFullYear()}`;
 }
 
 function AuditDocument(props: AuditPdfProps) {
   const items = props.negativeItems ?? [];
   const createdStr = formatCreatedDate(props.auditDate);
-  const reportDateStr = props.auditDate.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }).replace(/\//g, "/");
+  const reportDateStr = props.auditDate
+    .toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })
+    .replace(/\//g, "/");
 
-  // Parse scores into Experian, Equifax, TransUnion order
   const scoreParts = props.scoreSnapshot ? props.scoreSnapshot.split(",").map((s) => s.trim()) : [];
   const getScore = (bureau: "Experian" | "Equifax" | "TransUnion") => {
     const key = bureau === "Experian" ? "EX" : bureau === "Equifax" ? "EQ" : "TU";
@@ -270,158 +496,325 @@ function AuditDocument(props: AuditPdfProps) {
   const equifaxScore = getScore("Equifax");
   const transUnionScore = getScore("TransUnion");
 
-  const bureauStats = (score: string, label: string, isLast?: boolean) => (
-    <View style={[isLast ? styles.bureauColLast : styles.bureauCol]}>
-      <View style={styles.bureauCard}>
-        <Text style={styles.bureauHeader}>{label}</Text>
-        <Text style={styles.bureauScore}>{score}</Text>
-        <Text style={[styles.bureauRow, styles.bureauValue]}>{reportDateStr}</Text>
-        <View style={styles.bureauRow}>
-          <Text style={styles.bureauLabel}>Accounts</Text>
-          <Text style={styles.bureauValue}>—</Text>
-        </View>
-        <View style={styles.bureauRow}>
-          <Text style={styles.bureauLabel}>Inquiries</Text>
-          <Text style={styles.bureauValue}>{props.hardInquiriesCount}</Text>
-        </View>
-        <View style={styles.bureauRow}>
-          <Text style={styles.bureauLabel}>Public Records</Text>
-          <Text style={styles.bureauValue}>0</Text>
-        </View>
-        <View style={styles.bureauRow}>
-          <Text style={styles.bureauLabel}>Collections</Text>
-          <Text style={styles.bureauValue}>{props.collectionsCount}</Text>
-        </View>
-        <View style={styles.bureauRow}>
-          <Text style={styles.bureauLabel}>Current Past Due</Text>
-          <Text style={styles.bureauValue}>0</Text>
-        </View>
-        <View style={styles.bureauRow}>
-          <Text style={styles.bureauLabel}>Prior Past Due</Text>
-          <Text style={styles.bureauValue}>0</Text>
-        </View>
-        <View style={styles.bureauRow}>
-          <Text style={styles.bureauLabel}>Positive</Text>
-          <Text style={styles.bureauValue}>—</Text>
-        </View>
-        <View style={styles.bureauRow}>
-          <Text style={styles.bureauLabel}>Negative</Text>
-          <Text style={styles.bureauValue}>{props.negativeCount}</Text>
-        </View>
-      </View>
-    </View>
-  );
+  const eqCount = items.filter((i) => i.bureau.toLowerCase().includes("equifax")).length;
+  const exCount = items.filter((i) => i.bureau.toLowerCase().includes("experian")).length;
+  const tuCount = items.filter((i) => i.bureau.toLowerCase().includes("transunion")).length;
 
   const showNegInBureau = (item: AuditNegativeItem, bureau: string) => {
     const b = bureau.toLowerCase();
     const itemB = item.bureau.toLowerCase();
-    if (itemB.includes("experian") && b === "experian") return "Negative";
-    if (itemB.includes("equifax") && b === "equifax") return "Negative";
-    if (itemB.includes("transunion") && b === "transunion") return "Negative";
-    return "—";
+    if (itemB.includes("experian") && b === "experian") return true;
+    if (itemB.includes("equifax") && b === "equifax") return true;
+    if (itemB.includes("transunion") && b === "transunion") return true;
+    return false;
   };
 
-  const totalPages = 9;
+  const totalPages = 5;
+
+  const Footer = ({ page }: { page: number }) => (
+    <>
+      <Text style={styles.footer}>
+        Visit Us Online at: <Text style={styles.footerLink}>{BRAND.url}</Text>
+      </Text>
+      <Text style={styles.pageNum}>
+        {page} of {totalPages}
+      </Text>
+    </>
+  );
 
   return (
     <Document>
-      {/* Page 1: Cover */}
+      {/* Page 1: Cover – Credit Analysis For [Name], scores card, Dispute Overview, Prepared by */}
       <Page size="A4" style={styles.page}>
+        {props.logoPath ? (
+          <Image src={props.logoPath} style={styles.logoImage} />
+        ) : (
+          <Text style={styles.coverLogo}>THE CREDIT HUB</Text>
+        )}
         <Text style={styles.coverTitle}>Credit Analysis For</Text>
-        <Text style={styles.coverClientName}>{props.clientName.toUpperCase()}</Text>
+        <Text style={styles.coverClientName}>{props.clientName}</Text>
         <Text style={styles.coverSub}>
           This analysis report was generated by The Credit Hub and shows the positive and negative items from all three Credit Bureaus
         </Text>
         <Text style={styles.coverCreated}>Created: {createdStr}</Text>
-        <Text style={styles.coverPreparedBy}>Prepared by</Text>
-        <Text style={styles.coverBrand}>The Credit Hub</Text>
-        <Text style={styles.coverUrl}>www.thecredithub.io</Text>
-        <Text style={[styles.pageFooter, { marginTop: 0 }]}>Visit Us Online at: www.thecredithub.io</Text>
-        <Text style={styles.pageNum}>1 of {totalPages}</Text>
-      </Page>
 
-      {/* Page 2: A Low Score Can Cost You */}
-      <Page size="A4" style={styles.page}>
-        <Text style={styles.eduTitle}>A Low Score Can Cost You</Text>
-        <Text style={styles.eduBody}>
-          Having a great credit score is key to the rest of your financial life. It can mean the difference between home ownership and renting for the rest of your life. You will struggle to get approved for Credit Cards, Car Loans, and Mortgages — or pay tens of thousands more in interest.
-        </Text>
-        <View style={styles.eduBox}>
-          <Text style={[styles.eduTitle, { marginBottom: 4 }]}>Real World Auto Loan Example</Text>
-          <Text style={styles.eduBody}>
-            Having a 710 vs a 524 would save you almost $9,955 on the life of the loan. Low score (524): $28,500 at 15% = $678/mo. With 710: 3% = $512/mo. Having a high score will save you many thousands of dollars.
-          </Text>
+        <View style={styles.coverCard}>
+          <View style={styles.coverScoreRow}>
+            <View style={styles.coverScoreBlock}>
+              <Text style={styles.coverScoreValue}>{equifaxScore}</Text>
+              <Text style={styles.coverScoreLabel}>Equifax</Text>
+            </View>
+            <View style={styles.coverScoreBlock}>
+              <Text style={styles.coverScoreValue}>{experianScore}</Text>
+              <Text style={styles.coverScoreLabel}>Experian</Text>
+            </View>
+            <View style={styles.coverScoreBlock}>
+              <Text style={styles.coverScoreValue}>{transUnionScore}</Text>
+              <Text style={styles.coverScoreLabel}>TransUnion</Text>
+            </View>
+          </View>
+          <Text style={{ fontSize: 9, fontWeight: "bold", marginBottom: 4 }}>Dispute Overview</Text>
+          <View style={styles.miniTableHeader}>
+            <Text style={{ width: "28%" }}>Repair Status</Text>
+            <Text style={{ width: "24%", textAlign: "center" }}>Equifax</Text>
+            <Text style={{ width: "24%", textAlign: "center" }}>Experian</Text>
+            <Text style={{ width: "24%", textAlign: "center" }}>Transunion</Text>
+          </View>
+          <View style={styles.miniTableRow}>
+            <Text style={{ width: "28%" }}>In Dispute</Text>
+            <Text style={{ width: "24%", textAlign: "center" }}>{eqCount}</Text>
+            <Text style={{ width: "24%", textAlign: "center" }}>{exCount}</Text>
+            <Text style={{ width: "24%", textAlign: "center" }}>{tuCount}</Text>
+          </View>
+          <View style={styles.miniTableRow}>
+            <Text style={{ width: "28%" }}>Negative</Text>
+            <Text style={{ width: "24%", textAlign: "center" }}>{eqCount}</Text>
+            <Text style={{ width: "24%", textAlign: "center" }}>{exCount}</Text>
+            <Text style={{ width: "24%", textAlign: "center" }}>{tuCount}</Text>
+          </View>
+          <Text style={{ fontSize: 8, marginTop: 8, color: "#64748b" }}>Scores History (Current)</Text>
+          <View style={styles.miniTableRow}>
+            <Text style={{ width: "28%" }}>{reportDateStr}</Text>
+            <Text style={{ width: "24%", textAlign: "center" }}>{equifaxScore}</Text>
+            <Text style={{ width: "24%", textAlign: "center" }}>{experianScore}</Text>
+            <Text style={{ width: "24%", textAlign: "center" }}>{transUnionScore}</Text>
+          </View>
         </View>
-        <Text style={styles.pageFooter}>Visit Us Online at: www.thecredithub.io</Text>
-        <Text style={styles.pageNum}>2 of {totalPages}</Text>
+
+        <Text style={styles.coverPrepared}>Prepared by</Text>
+        <Text style={styles.coverBrand}>{BRAND.name}</Text>
+        <Text style={styles.coverUrl}>{BRAND.url}</Text>
+
+        <Footer page={1} />
       </Page>
 
-      {/* Page 3: Considering Home Ownership */}
-      <Page size="A4" style={styles.page}>
-        <Text style={styles.eduTitle}>Considering Home Ownership?</Text>
-        <Text style={styles.eduBody}>
-          This will be the single largest purchase most of us will ever make in our lifetimes — make sure you have a score well above 650 to take advantage of better interest rates.
-        </Text>
-        <View style={styles.eduBox}>
-          <Text style={[styles.eduTitle, { marginBottom: 4 }]}>Real World Home Loan Example</Text>
-          <Text style={styles.eduBody}>
-            Having a 710 vs a 524 could save you over $143,328 on the life of the loan. $250k at 6.5% (low score) = $1,580/mo vs 3.9% (710) = $1,182/mo. The sooner you start improving your credit, the sooner we can get you results!
-          </Text>
-        </View>
-        <Text style={styles.pageFooter}>Visit Us Online at: www.thecredithub.io</Text>
-        <Text style={styles.pageNum}>3 of {totalPages}</Text>
-      </Page>
-
-      {/* Page 4: Understanding Credit Scores */}
+      {/* Page 2: Understanding Credit Scores */}
       <Page size="A4" style={styles.page}>
         <Text style={styles.eduTitle}>Understanding Credit Scores</Text>
-        <Text style={styles.eduBody}>
-          There are a lot of factors that go into your credit score. Your score will also vary depending on which Credit Bureau the lender decides to use. Credit scores range from 300-850. The higher your score, the more likely you will be approved for loans at better rates.
+        <Text style={styles.eduSub}>
+          There are a lot of factors that go into your credit score. Your score will also vary depending on which Credit Bureau the lender decides to use for your application. Understanding how it all works will empower you to build and maintain a great score going forward.
         </Text>
+
         <View style={styles.eduBox}>
-          <Text style={[styles.eduTitle, { marginBottom: 4 }]}>Score Factors</Text>
-          <Text style={styles.eduBody}>35% Payment History · 30% Amount Owed · 15% Credit History · 10% Types of Credit · 10% Applying for Credit</Text>
+          <Text style={styles.eduBoxTitle}>Credit Scores</Text>
+          <View style={styles.eduBullet}>
+            <Text style={styles.eduCheck}>✓</Text>
+            <Text>A credit score is a number generated using a formula that is meant to predict your credit worthiness.</Text>
+          </View>
+          <View style={styles.eduBullet}>
+            <Text style={styles.eduCheck}>✓</Text>
+            <Text>Credit scores range from 300-850. The higher your score is, the more likely you will be approved for loans.</Text>
+          </View>
+          <View style={styles.eduBullet}>
+            <Text style={styles.eduCheck}>✓</Text>
+            <Text>The lower your score, the less likely you will be approved.</Text>
+          </View>
+          <View style={styles.eduBullet}>
+            <Text style={styles.eduCheck}>✓</Text>
+            <Text>Your interest rates will be MUCH higher than someone who has a great credit score.</Text>
+          </View>
+          <View style={styles.eduBullet}>
+            <Text style={styles.eduCheck}>✓</Text>
+            <Text>Having a high score will save you many thousands of dollars on some of the most important purchases of your life.</Text>
+          </View>
         </View>
-        <Text style={styles.pageFooter}>Visit Us Online at: www.thecredithub.io</Text>
-        <Text style={styles.pageNum}>4 of {totalPages}</Text>
+
+        <Text style={styles.bureauSectionTitle}>Credit Bureaus</Text>
+        <Text style={[styles.eduSub, { textAlign: "left", marginBottom: 8 }]}>
+          Credit Bureaus are companies that collect and maintain your credit information which Lenders and Creditors use to determine whether or not you will be approved.
+        </Text>
+        <View style={styles.bureauLogosRow}>
+          <Text style={[styles.bureauLogoText, { color: "#1e40af" }]}>experian</Text>
+          <Text style={[styles.bureauLogoText, { color: "#dc2626" }]}>EQUIFAX®</Text>
+          <Text style={[styles.bureauLogoText, { color: "#2563eb" }]}>TransUnion</Text>
+        </View>
+        <View style={styles.eduBox}>
+          <Text style={styles.eduBoxTitle}>Score Factors</Text>
+          <Text style={styles.scoreFactorsList}>
+            35% Payment History{"\n"}30% Amount Owed{"\n"}15% Credit History{"\n"}10% Types of Credit{"\n"}10% Applying for Credit
+          </Text>
+        </View>
+
+        <Footer page={2} />
       </Page>
 
-      {/* Page 5: Credit Analysis for [Name] - three bureaus + credit card usage */}
+      {/* Page 3: Credit Bureau Scores + Credit Card Usage */}
       <Page size="A4" style={styles.page}>
         <Text style={styles.dataPageTitle}>Credit Analysis for</Text>
         <Text style={styles.dataPageClient}>{props.clientName}</Text>
         <Text style={styles.dataPageSub}>Shows the positive and negative items from all three Credit Bureaus</Text>
 
         <View style={styles.threeColRow}>
-          {bureauStats(experianScore, "Experian")}
-          {bureauStats(equifaxScore, "Equifax")}
-          {bureauStats(transUnionScore, "TransUnion", true)}
+          <View style={styles.bureauCol}>
+            <View style={styles.bureauCard}>
+              <Text style={[styles.bureauCardHeader, styles.bureauCardHeaderEq]}>EQUIFAX®</Text>
+              <Text style={styles.bureauScore}>{equifaxScore}</Text>
+              <Text style={styles.bureauDate}>{reportDateStr}</Text>
+              <View style={styles.bureauStatRow}>
+                <Text style={styles.bureauStatLabel}>Accounts</Text>
+                <Text style={styles.bureauStatValue}>—</Text>
+              </View>
+              <View style={styles.bureauStatRow}>
+                <Text style={styles.bureauStatLabel}>Inquiries</Text>
+                <Text style={styles.bureauStatValue}>{props.hardInquiriesCount}</Text>
+              </View>
+              <View style={styles.bureauStatRow}>
+                <Text style={styles.bureauStatLabel}>Public Records</Text>
+                <Text style={styles.bureauStatValue}>0</Text>
+              </View>
+              <View style={styles.bureauStatRow}>
+                <Text style={styles.bureauStatLabel}>Collections</Text>
+                <Text style={styles.bureauStatValue}>{props.collectionsCount}</Text>
+              </View>
+              <View style={styles.bureauStatRow}>
+                <Text style={styles.bureauStatLabel}>Current Past Due</Text>
+                <Text style={styles.bureauStatValue}>0</Text>
+              </View>
+              <View style={styles.bureauStatRow}>
+                <Text style={styles.bureauStatLabel}>Prior Past Due</Text>
+                <Text style={styles.bureauStatValue}>0</Text>
+              </View>
+              <View style={styles.bureauPositiveNegative}>
+                <Text style={styles.bureauStatLabel}>Positive</Text>
+                <Text style={styles.bureauStatValue}>—</Text>
+              </View>
+              <View style={styles.bureauPositiveNegative}>
+                <Text style={styles.bureauStatLabel}>Negative</Text>
+                <Text style={[styles.bureauStatValue, { color: "#dc2626" }]}>{eqCount}</Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.bureauCol}>
+            <View style={styles.bureauCard}>
+              <Text style={[styles.bureauCardHeader, styles.bureauCardHeaderEx]}>experian</Text>
+              <Text style={styles.bureauScore}>{experianScore}</Text>
+              <Text style={styles.bureauDate}>{reportDateStr}</Text>
+              <View style={styles.bureauStatRow}>
+                <Text style={styles.bureauStatLabel}>Accounts</Text>
+                <Text style={styles.bureauStatValue}>—</Text>
+              </View>
+              <View style={styles.bureauStatRow}>
+                <Text style={styles.bureauStatLabel}>Inquiries</Text>
+                <Text style={styles.bureauStatValue}>{props.hardInquiriesCount}</Text>
+              </View>
+              <View style={styles.bureauStatRow}>
+                <Text style={styles.bureauStatLabel}>Public Records</Text>
+                <Text style={styles.bureauStatValue}>0</Text>
+              </View>
+              <View style={styles.bureauStatRow}>
+                <Text style={styles.bureauStatLabel}>Collections</Text>
+                <Text style={styles.bureauStatValue}>{props.collectionsCount}</Text>
+              </View>
+              <View style={styles.bureauStatRow}>
+                <Text style={styles.bureauStatLabel}>Current Past Due</Text>
+                <Text style={styles.bureauStatValue}>0</Text>
+              </View>
+              <View style={styles.bureauStatRow}>
+                <Text style={styles.bureauStatLabel}>Prior Past Due</Text>
+                <Text style={styles.bureauStatValue}>0</Text>
+              </View>
+              <View style={styles.bureauPositiveNegative}>
+                <Text style={styles.bureauStatLabel}>Positive</Text>
+                <Text style={styles.bureauStatValue}>—</Text>
+              </View>
+              <View style={styles.bureauPositiveNegative}>
+                <Text style={styles.bureauStatLabel}>Negative</Text>
+                <Text style={[styles.bureauStatValue, { color: "#dc2626" }]}>{exCount}</Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.bureauCol}>
+            <View style={styles.bureauCard}>
+              <Text style={[styles.bureauCardHeader, styles.bureauCardHeaderTu]}>TransUnion</Text>
+              <Text style={styles.bureauScore}>{transUnionScore}</Text>
+              <Text style={styles.bureauDate}>{reportDateStr}</Text>
+              <View style={styles.bureauStatRow}>
+                <Text style={styles.bureauStatLabel}>Accounts</Text>
+                <Text style={styles.bureauStatValue}>—</Text>
+              </View>
+              <View style={styles.bureauStatRow}>
+                <Text style={styles.bureauStatLabel}>Inquiries</Text>
+                <Text style={styles.bureauStatValue}>{props.hardInquiriesCount}</Text>
+              </View>
+              <View style={styles.bureauStatRow}>
+                <Text style={styles.bureauStatLabel}>Public Records</Text>
+                <Text style={styles.bureauStatValue}>0</Text>
+              </View>
+              <View style={styles.bureauStatRow}>
+                <Text style={styles.bureauStatLabel}>Collections</Text>
+                <Text style={styles.bureauStatValue}>{props.collectionsCount}</Text>
+              </View>
+              <View style={styles.bureauStatRow}>
+                <Text style={styles.bureauStatLabel}>Current Past Due</Text>
+                <Text style={styles.bureauStatValue}>0</Text>
+              </View>
+              <View style={styles.bureauStatRow}>
+                <Text style={styles.bureauStatLabel}>Prior Past Due</Text>
+                <Text style={styles.bureauStatValue}>0</Text>
+              </View>
+              <View style={styles.bureauPositiveNegative}>
+                <Text style={styles.bureauStatLabel}>Positive</Text>
+                <Text style={styles.bureauStatValue}>—</Text>
+              </View>
+              <View style={styles.bureauPositiveNegative}>
+                <Text style={styles.bureauStatLabel}>Negative</Text>
+                <Text style={[styles.bureauStatValue, { color: "#dc2626" }]}>{tuCount}</Text>
+              </View>
+            </View>
+          </View>
         </View>
 
-        <Text style={styles.sectionTitle}>- Credit Card Usage -</Text>
-        <Text style={styles.sectionText}>
+        <Text style={styles.usageSectionTitle}>- Credit Card Usage -</Text>
+        <Text style={styles.usageIntro}>
           If you're carrying high balances, try to pay your balances down to below 25% of the available credit limit of each card. Never spend more than that, even if you pay the bill off in full each month.
         </Text>
         <View style={styles.usageBox}>
-          <Text style={styles.usageLabel}>Avg Usage</Text>
-          <Text style={styles.usageValue}>{props.utilizationPct != null ? `${props.utilizationPct}%` : "—"}</Text>
+          <Text style={styles.usageLabel}>Revolving (credit cards)</Text>
+          {(props.totalRevolvingBalance != null || props.totalRevolvingLimit != null) && (
+            <Text style={styles.usageIntro}>
+              Total balance: {props.totalRevolvingBalance != null ? `$${props.totalRevolvingBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "—"}
+              {" · "}
+              Total limit: {props.totalRevolvingLimit != null ? `$${props.totalRevolvingLimit.toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "—"}
+            </Text>
+          )}
+          <Text style={styles.usageValue}>Utilization: {props.utilizationPct != null ? `${props.utilizationPct}%` : "—"}</Text>
+        </View>
+        <View style={styles.usageScale}>
+          <View style={[styles.usageScaleSegment, { backgroundColor: "#22c55e" }]}>
+            <Text style={styles.usageScaleLabel}>Excellent</Text>
+          </View>
+          <View style={[styles.usageScaleSegment, { backgroundColor: "#84cc16" }]}>
+            <Text style={styles.usageScaleLabel}>Good</Text>
+          </View>
+          <View style={[styles.usageScaleSegment, { backgroundColor: "#3b82f6" }]}>
+            <Text style={styles.usageScaleLabel}>Fair</Text>
+          </View>
+          <View style={[styles.usageScaleSegment, { backgroundColor: "#f97316" }]}>
+            <Text style={styles.usageScaleLabel}>Poor</Text>
+          </View>
+          <View style={[styles.usageScaleSegment, { backgroundColor: "#ef4444" }]}>
+            <Text style={styles.usageScaleLabel}>Very Poor</Text>
+          </View>
         </View>
 
-        <Text style={styles.pageFooter}>Visit Us Online at: www.thecredithub.io</Text>
-        <Text style={styles.pageNum}>5 of {totalPages}</Text>
+        <Footer page={3} />
       </Page>
 
-      {/* Page 6: Your Derogatory Items */}
+      {/* Page 4: Your Derogatory Items */}
       <Page size="A4" style={styles.page}>
-        <Text style={styles.sectionTitle}>- Your Derogatory Items -</Text>
-        <Text style={styles.sectionText}>
-          You have {items.length} item(s) marked as delinquent or derogatory (negative). Late payments, Collections, and other derogatory items within the last 6 months will hurt your credit score more so than older in-active accounts.
+        <Text style={styles.derogTitle}>- Your Derogatory Items -</Text>
+        <Text style={styles.derogSub}>
+          You have <Text style={styles.derogSubBold}>{items.length} items</Text> marked as delinquent or derogatory (negative).
         </Text>
+        <Text style={styles.derogDesc}>
+          Late payments, Collections, and other derogatory items within the last 6 months will hurt your credit score more so than older in-active accounts.
+        </Text>
+
         {items.length > 0 ? (
-          <View style={styles.table}>
+          <View style={{ marginTop: 8 }}>
             <View style={styles.tableHeader}>
               <Text style={styles.colAccount}>Account Name</Text>
-              <Text style={styles.colDisputeType}>Dispute Type</Text>
+              <Text style={styles.colType}>Dispute Type</Text>
               <Text style={styles.colEq}>Equifax</Text>
               <Text style={styles.colEx}>Experian</Text>
               <Text style={styles.colTu}>TransUnion</Text>
@@ -430,10 +823,28 @@ function AuditDocument(props: AuditPdfProps) {
             {items.map((item, i) => (
               <View key={i} style={styles.tableRow}>
                 <Text style={styles.colAccount}>{item.accountName}</Text>
-                <Text style={styles.colDisputeType}>{item.accountType ?? "ACCOUNTS"}</Text>
-                <Text style={styles.colEq}>{showNegInBureau(item, "Equifax")}</Text>
-                <Text style={styles.colEx}>{showNegInBureau(item, "Experian")}</Text>
-                <Text style={styles.colTu}>{showNegInBureau(item, "TransUnion")}</Text>
+                <Text style={styles.colType}>{item.accountType ?? "ACCOUNTS"}</Text>
+                <Text style={styles.colEq}>
+                  {showNegInBureau(item, "Equifax") ? (
+                    <Text style={styles.negText}>Negative</Text>
+                  ) : (
+                    <Text style={styles.noneText}>None</Text>
+                  )}
+                </Text>
+                <Text style={styles.colEx}>
+                  {showNegInBureau(item, "Experian") ? (
+                    <Text style={styles.negText}>Negative</Text>
+                  ) : (
+                    <Text style={styles.noneText}>None</Text>
+                  )}
+                </Text>
+                <Text style={styles.colTu}>
+                  {showNegInBureau(item, "TransUnion") ? (
+                    <Text style={styles.negText}>Negative</Text>
+                  ) : (
+                    <Text style={styles.noneText}>None</Text>
+                  )}
+                </Text>
                 <Text style={styles.colDetails}>
                   {item.negativeReason ?? (item.balance != null ? `Balance $${Number(item.balance).toLocaleString()}` : "—")}
                 </Text>
@@ -442,103 +853,98 @@ function AuditDocument(props: AuditPdfProps) {
           </View>
         ) : null}
 
-        <Text style={styles.pageFooter}>Visit Us Online at: www.thecredithub.io</Text>
-        <Text style={styles.pageNum}>6 of {totalPages}</Text>
+        <Footer page={4} />
       </Page>
 
-      {/* Page 7: Public Records & Inquiries */}
+      {/* Page 5: Let's Get Started */}
       <Page size="A4" style={styles.page}>
-        <Text style={styles.sectionTitle}>- Your Public Records -</Text>
-        <Text style={styles.sectionText}>
-          You have 0 on your report. Public records include details of any Court Records, Bankruptcy filings, Judgements & Tax Liens. These can remain on your Credit Report for up to 7-10 years.
-        </Text>
-
-        <Text style={[styles.sectionTitle, { marginTop: 16 }]}>- Your Credit Inquiries -</Text>
-        <Text style={styles.sectionText}>
-          You have {props.hardInquiriesCount} Inquiries on your report. Every time you apply for credit, it lowers your score. For this reason we ask that during the credit repair process, you do not apply for any new credit.
-        </Text>
-
-        <Text style={styles.pageFooter}>Visit Us Online at: www.thecredithub.io</Text>
-        <Text style={styles.pageNum}>7 of {totalPages}</Text>
-      </Page>
-
-      {/* Page 8: How Long / Law / Your Next Steps */}
-      <Page size="A4" style={styles.page}>
-        <Text style={styles.eduTitle}>How Long to See Results?</Text>
-        <Text style={styles.eduBody}>
-          Credit line balances are reported to the bureaus once a month. It can take 1-2 months to start seeing score improvements. This will be one of the most rewarding financial decisions you will make. The sooner you start, the sooner we can get you results!
-        </Text>
-        <Text style={styles.eduTitle}>The Law is on Your Side</Text>
-        <Text style={styles.eduBody}>
-          Nearly 80% of all credit reports have errors that can lower your scores — but you have legal rights and we know how to use them to benefit you! The law gives you the right to dispute any item on your credit report. If those items can't be verified, they have to be removed. We Will Fight for YOU!
-        </Text>
-        <Text style={styles.sectionTitle}>Your Next Steps:</Text>
-        <Text style={styles.sectionText}>
-          Log Into Your Client Portal — You will receive an email with your unique login and password and instructions on how to get started.
-        </Text>
-        <Text style={styles.sectionText}>
-          Upload Your Documents — Take a picture of these on your phone and upload them to us in your client portal: Copy of your Photo ID, Copy of a Utility Bill, Photo of your SSN Card.
-        </Text>
-        <Text style={styles.sectionText}>
-          Sit Back & Relax — Once we have all your documentation, we will start the disputing process and send letters to all the credit bureaus and creditors to get incorrect and negative items removed!
-        </Text>
-
-        <Text style={styles.pageFooter}>Visit Us Online at: www.thecredithub.io</Text>
-        <Text style={styles.pageNum}>8 of {totalPages}</Text>
-      </Page>
-
-      {/* Page 9: Let's Get Started */}
-      <Page size="A4" style={styles.page}>
-        <Text style={styles.eduTitle}>Let's Get Started!</Text>
-        <Text style={styles.eduBody}>
+        {props.envelopeIconPath ? (
+          <Image src={props.envelopeIconPath} style={styles.envelopeIconImage} />
+        ) : (
+          <Text style={styles.ctaIcon}>✉</Text>
+        )}
+        <Text style={styles.ctaTitle}>Let's Get Started!</Text>
+        <Text style={styles.ctaBody}>
           If you have any questions, or are ready to get started on your journey to great credit, then please contact us on our website or with the information below.
         </Text>
-        <Text style={[styles.coverBrand, { marginTop: 20 }]}>The Credit Hub</Text>
-        <Text style={styles.coverUrl}>www.thecredithub.io</Text>
+        <View style={styles.ctaBrandBox}>
+          {props.logoPath ? (
+            <Image src={props.logoPath} style={[styles.logoImage, { marginBottom: 8 }]} />
+          ) : (
+            <Text style={styles.ctaBrand}>{BRAND.name}</Text>
+          )}
+          <Text style={[styles.coverUrl, { marginTop: 4 }]}>{BRAND.url}</Text>
+        </View>
 
-        <Text style={styles.pageFooter}>Visit Us Online at: www.thecredithub.io</Text>
-        <Text style={styles.pageNum}>9 of {totalPages}</Text>
+        <Footer page={5} />
       </Page>
     </Document>
   );
 }
 
-export async function generateAuditPdf(
-  props: AuditPdfProps
-): Promise<string | null> {
-  try {
-    const blob = await pdf(
-      <AuditDocument
-        clientName={props.clientName}
-        auditDate={props.auditDate}
-        scoreSnapshot={props.scoreSnapshot}
-        negativeCount={props.negativeCount}
-        collectionsCount={props.collectionsCount}
-        chargeOffsCount={props.chargeOffsCount}
-        hardInquiriesCount={props.hardInquiriesCount}
-        utilizationPct={props.utilizationPct}
-        summaryIssues={props.summaryIssues}
-        recommendedSteps={props.recommendedSteps}
-        capitalReadinessNotes={props.capitalReadinessNotes}
-        negativeItems={props.negativeItems}
-      />
-    ).toBlob();
+/** Resolve optional image paths from public/audit-assets/ (used when not provided in props) */
+function resolveAuditAssetPaths(): { logoPath?: string; envelopeIconPath?: string } {
+  const base = path.join(process.cwd(), "public", "audit-assets");
+  const logo = path.join(base, "logo.png");
+  const envelope = path.join(base, "icon-envelope.png");
+  return {
+    logoPath: fs.existsSync(logo) ? logo : undefined,
+    envelopeIconPath: fs.existsSync(envelope) ? envelope : undefined,
+  };
+}
 
-    const buffer = Buffer.from(await blob.arrayBuffer());
+/** Generate audit PDF and return the buffer (for preview or custom save). */
+export async function generateAuditPdfBuffer(props: AuditPdfProps): Promise<Buffer> {
+  const assets = resolveAuditAssetPaths();
+  const blob = await pdf(
+    <AuditDocument
+      clientName={props.clientName}
+      auditDate={props.auditDate}
+      scoreSnapshot={props.scoreSnapshot}
+      negativeCount={props.negativeCount}
+      collectionsCount={props.collectionsCount}
+      chargeOffsCount={props.chargeOffsCount}
+      hardInquiriesCount={props.hardInquiriesCount}
+      utilizationPct={props.utilizationPct}
+      totalRevolvingBalance={props.totalRevolvingBalance}
+      totalRevolvingLimit={props.totalRevolvingLimit}
+      summaryIssues={props.summaryIssues}
+      recommendedSteps={props.recommendedSteps}
+      capitalReadinessNotes={props.capitalReadinessNotes}
+      negativeItems={props.negativeItems}
+      logoPath={props.logoPath ?? assets.logoPath}
+      envelopeIconPath={props.envelopeIconPath ?? assets.envelopeIconPath}
+    />
+  ).toBlob();
+  return Buffer.from(await blob.arrayBuffer());
+}
+
+/** Build filename: credit-report-analysis-{{full-name}}.pdf (sanitized, lowercase, hyphens) */
+function getAuditPdfFileName(clientName: string): string {
+  const sanitized =
+    (clientName || "client")
+      .replace(/[^\p{L}\p{N}\s]/gu, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "")
+      .toLowerCase() || "client";
+  return `credit-report-analysis-${sanitized}.pdf`;
+}
+
+export async function generateAuditPdf(props: AuditPdfProps): Promise<string | null> {
+  try {
+    const buffer = await generateAuditPdfBuffer(props);
+    const baseName = getAuditPdfFileName(props.clientName);
+    const storagePath = `audits/${baseName}`;
 
     if (isBlobStorageAvailable()) {
-      const blobUrl = await uploadToBlob(
-        buffer,
-        `audits/audit-${Date.now()}.pdf`,
-        { contentType: "application/pdf" }
-      );
+      const blobUrl = await uploadToBlob(buffer, storagePath, { contentType: "application/pdf" });
       return blobUrl;
     }
 
     const dir = path.join(process.cwd(), "uploads", "audits");
     await mkdir(dir, { recursive: true });
-    const fileName = `audit-${Date.now()}.pdf`;
-    const filePath = path.join(dir, fileName);
+    const filePath = path.join(dir, baseName);
     await writeFile(filePath, buffer);
     return path.relative(process.cwd(), filePath);
   } catch (e) {

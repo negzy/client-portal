@@ -11,6 +11,7 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
+    "preview-audit": "tsx scripts/preview-audit-pdf.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },

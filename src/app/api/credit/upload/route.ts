@@ -112,10 +112,15 @@ export async function POST(req: Request) {
     },
   });
 
+  const fullName =
+    [profile.firstName, profile.lastName].filter(Boolean).join(" ").trim() ||
+    session.user?.name ||
+    "Client";
+
   const analysis = analyzeCreditReport({
     fileName: file.name,
     type,
-    clientName: session.user?.name ?? "Client",
+    clientName: fullName,
     scoreOverrides,
     rawText: rawText?.trim() || undefined,
   });
@@ -139,7 +144,7 @@ export async function POST(req: Request) {
     });
   }
 
-  const audit = await createAuditFromAnalysis(profile.id, session.user?.name ?? "Client", analysis, filePath);
+  const audit = await createAuditFromAnalysis(profile.id, fullName, analysis, filePath);
 
   // Timeline
   await prisma.timelineActivity.createMany({

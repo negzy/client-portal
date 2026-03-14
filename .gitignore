@@ -16,6 +16,7 @@ dist
 
 # misc
 .DS_Store
+preview-audit.pdf
 *.pem
 .env
 .env*.local
@@ -31,6 +32,9 @@ prisma/migrations/**/migration_lock.toml
 
 # uploads (user data)
 uploads/
+
+# local preview
+preview-audit.pdf
 
 # ide
 .idea
