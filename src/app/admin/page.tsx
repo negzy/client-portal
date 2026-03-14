@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
@@ -14,7 +15,9 @@ import {
 } from "lucide-react";
 
 export default async function AdminDashboardPage() {
-  await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) redirect("/login");
+  if ((session.user as { role?: string }).role !== "ADMIN") redirect("/dashboard");
 
   const [
     clientCount,
@@ -158,21 +161,25 @@ export default async function AdminDashboardPage() {
             {activities.length === 0 ? (
               <li className="py-6 text-center text-slate-500">No recent activity</li>
             ) : (
-              activities.map((a) => (
-                <li
-                  key={a.id}
-                  className="flex items-start gap-3 rounded-xl border border-surface-border bg-surface-card p-3"
-                >
-                  <Activity className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" />
-                  <div>
-                    <p className="text-sm font-medium text-white">{a.title}</p>
-                    <p className="text-xs text-slate-500">
-                      {a.clientProfile?.user?.name ?? a.clientProfile?.user?.email ?? "Client"} ·{" "}
-                      {new Date(a.occurredAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </li>
-              ))
+              activities.map((a) => {
+                const clientLabel = a.clientProfile
+                  ? (a.clientProfile.user?.name ?? a.clientProfile.user?.email ?? "Client")
+                  : "Unknown client";
+                return (
+                  <li
+                    key={a.id}
+                    className="flex items-start gap-3 rounded-xl border border-surface-border bg-surface-card p-3"
+                  >
+                    <Activity className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" />
+                    <div>
+                      <p className="text-sm font-medium text-white">{a.title}</p>
+                      <p className="text-xs text-slate-500">
+                        {clientLabel} · {new Date(a.occurredAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </li>
+                );
+              })
             )}
           </ul>
         </section>

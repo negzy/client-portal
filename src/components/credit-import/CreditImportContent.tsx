@@ -18,7 +18,6 @@ type LatestAudit = {
   auditDate: string;
   scoreSnapshot: string | null;
   negativeCount: number;
-  fundingReadinessScore: number | null;
   pdfPath: string | null;
 };
 
@@ -35,6 +34,9 @@ export function CreditImportContent({
         <h1 className="page-title">Import your credit report</h1>
         <p className="page-sub">
           Upload a PDF or screenshot of your report — we'll read your scores when possible. You can also enter scores manually.
+        </p>
+        <p className="mt-1 text-sm text-slate-400">
+          We automatically analyze your report and generate a Credit Report Analysis (audit) when you upload — no extra steps. For accurate analysis, upload a credit report PDF (e.g. MyFreeScoreNow). Other documents (ID, utility bill, etc.) go in Document Vault.
         </p>
       </div>
 
@@ -63,12 +65,6 @@ export function CreditImportContent({
               <p className="text-xs text-slate-500 uppercase tracking-wider">Negative items</p>
               <p className="mt-0.5 font-medium text-white">{latestAudit.negativeCount}</p>
             </div>
-            {latestAudit.fundingReadinessScore != null && (
-              <div>
-                <p className="text-xs text-slate-500 uppercase tracking-wider">Funding readiness</p>
-                <p className="mt-0.5 font-medium text-white">{latestAudit.fundingReadinessScore}/100</p>
-              </div>
-            )}
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
@@ -85,7 +81,7 @@ export function CreditImportContent({
                 className="btn-secondary inline-flex items-center gap-2"
               >
                 <Download className="h-4 w-4" />
-                Download audit PDF
+                Download Credit Report Analysis PDF
               </a>
             )}
           </div>

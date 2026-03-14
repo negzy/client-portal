@@ -15,6 +15,7 @@ import {
   BarChart3,
   Settings,
   LogOut,
+  StickyNote,
 } from "lucide-react";
 import { clsx } from "clsx";
 
@@ -34,6 +35,7 @@ const adminNav = [
   { href: "/admin/invoices", label: "Invoices", icon: FileText },
   { href: "/admin/reports", label: "Reports", icon: BarChart3 },
   { href: "/admin/poa", label: "POA", icon: FileText },
+  { href: "/admin/notes", label: "Credentials & notes", icon: StickyNote },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 

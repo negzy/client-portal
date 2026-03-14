@@ -13,6 +13,7 @@ export function ManualUploadForm() {
   const [experianScore, setExperianScore] = useState("");
   const [equifaxScore, setEquifaxScore] = useState("");
   const [transUnionScore, setTransUnionScore] = useState("");
+  const [noDataMessage, setNoDataMessage] = useState(false);
 
   async function handleFileSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -39,6 +40,15 @@ export function ManualUploadForm() {
         return;
       }
       router.refresh();
+      if (data.noDataDetected) {
+        setError("");
+        setNoDataMessage(true);
+        setTimeout(() => {
+          if (data.auditId) router.push(`/dashboard/audits/${data.auditId}`);
+          else router.push("/dashboard");
+        }, 2800);
+        return;
+      }
       if (data.auditId) router.push(`/dashboard/audits/${data.auditId}`);
       else router.push("/dashboard");
     } finally {
@@ -151,6 +161,14 @@ export function ManualUploadForm() {
             </div>
           </div>
           {error && <p className="text-sm text-red-400">{error}</p>}
+          {noDataMessage && (
+            <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">
+              No credit report data was detected in this file. It&apos;s been saved to your Document Vault. For a full analysis, upload a credit report PDF (e.g. MyFreeScoreNow). Redirecting to your audit…
+            </p>
+          )}
+          <p className="text-xs text-slate-500">
+            Your report will be analyzed automatically and a Credit Report Analysis PDF will be generated for you.
+          </p>
           <button
             type="submit"
             disabled={loading || !file}

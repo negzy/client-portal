@@ -663,3 +663,12 @@ model Furnisher {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 }
+
+// Admin / VA notes (credentials: CFPB, FTC, etc.)
+model AdminNote {
+  id        String   @id @default(cuid())
+  key       String   @unique // e.g. CFPB, FTC, general
+  label     String   // Display name
+  content   String   @db.Text
+  updatedAt DateTime @updatedAt @map("updated_at")
+}

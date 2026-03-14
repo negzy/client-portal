@@ -220,7 +220,7 @@ export function OnboardingFlow({ reviewMode = false }: { reviewMode?: boolean })
             <div className="rounded-xl border border-zinc-600 bg-zinc-800 p-6 shadow-sm md:p-8">
               {step === 1 && (
                 <>
-                  <h1 className="text-2xl font-bold text-white">Welcome to Premium</h1>
+                  <h1 className="text-2xl font-bold text-white">Welcome to Elite</h1>
                   <p className="mt-2 text-zinc-300">
                     This portal is your central hub for credit reset, funding readiness, and progress tracking. Follow the steps below to get fully set up.
                   </p>

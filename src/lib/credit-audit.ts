@@ -1,6 +1,10 @@
 import { prisma } from "./prisma";
 import type { Bureau } from "@prisma/client";
 import { generateAuditPdf } from "./audit-pdf";
+import {
+  parseScoresFromReport,
+  parseNegativeItemsFromReport,
+} from "./myfreescorenow-parser";
 
 export type NegativeItemInput = {
   accountName: string;
@@ -76,40 +80,53 @@ export function analyzeCreditReport(params: {
   clientName: string;
   /** When provided, use these exact scores (e.g. from user entry or extracted from report). */
   scoreOverrides?: { experian?: number; equifax?: number; transUnion?: number };
-  /** Optional raw text from PDF/image OCR to extract scores. */
+  /** Optional raw text from PDF (e.g. MyFreeScoreNow classic or smart view). Scores and negative items are parsed from this. */
   rawText?: string;
 }): CreditAnalysis {
   const { clientName, scoreOverrides, rawText } = params;
-  const negativeItems: NegativeItemInput[] = [
-    {
-      accountName: "Sample Collection Account",
-      bureau: "Experian",
-      accountType: "Collection",
-      balance: 500,
-      negativeReason: "Collection account",
-    },
-    {
-      accountName: "Sample Late Payment",
-      bureau: "Equifax",
-      accountType: "Credit Card",
-      balance: 0,
-      negativeReason: "30-day late",
-    },
-  ];
 
-  const collectionsCount = negativeItems.filter(
-    (i) => i.accountType?.toLowerCase().includes("collection")
+  // Parse from MyFreeScoreNow (or similar) PDF text when available; otherwise no sample placeholders
+  let negativeItems: NegativeItemInput[] = [];
+  if (rawText?.trim()) {
+    const parsed = parseNegativeItemsFromReport(rawText);
+    negativeItems = parsed.map((p) => ({
+      accountName: p.accountName,
+      bureau: p.bureau,
+      accountType: p.accountType ?? undefined,
+      balance: p.balance ?? undefined,
+      negativeReason: p.negativeReason ?? undefined,
+    }));
+  }
+
+  const collectionsCount = negativeItems.filter((i) =>
+    i.accountType?.toLowerCase().includes("collection")
   ).length;
-  const chargeOffsCount = 0;
-  const hardInquiriesCount = 2;
-  const utilizationPct = 35;
-  const openAccountsCount = 3;
-  const positiveTradelinesCount = 2;
+  const chargeOffsCount = negativeItems.filter((i) =>
+    i.accountType?.toLowerCase().includes("charge")
+  ).length;
+  const hardInquiriesCount = (() => {
+    const m = rawText?.match(/(?:hard\s+)?inquir(?:y|ies)\s*[:\s]*(\d+)|(\d+)\s*(?:hard\s+)?inquir/i);
+    if (m) {
+      const n = parseInt(m[1] ?? m[2] ?? "0", 10);
+      if (Number.isFinite(n) && n >= 0 && n <= 50) return n;
+    }
+    return 0;
+  })();
+  const utilizationPct: number | null = (() => {
+    const m = rawText?.match(/(?:utilization|util)\s*[:\s]*(\d+(?:\.\d+)?)\s*%?/i);
+    if (m) {
+      const n = parseFloat(m[1]);
+      if (Number.isFinite(n) && n >= 0 && n <= 100) return n;
+    }
+    return null;
+  })();
+  const openAccountsCount = rawText?.match(/\bopen\s+account/gi)?.length ?? 0;
+  const positiveTradelinesCount = 0;
 
   const summaryIssues = [
-    collectionsCount && `${collectionsCount} collection(s)`,
-    chargeOffsCount && `${chargeOffsCount} charge-off(s)`,
-    hardInquiriesCount && `${hardInquiriesCount} hard inquiry(ies)`,
+    collectionsCount ? `${collectionsCount} collection(s)` : "",
+    chargeOffsCount ? `${chargeOffsCount} charge-off(s)` : "",
+    hardInquiriesCount ? `${hardInquiriesCount} hard inquiry(ies)` : "",
   ]
     .filter(Boolean)
     .join("; ") || "Review your report for details.";
@@ -122,8 +139,8 @@ export function analyzeCreditReport(params: {
     100 -
       collectionsCount * 15 -
       chargeOffsCount * 20 -
-      (utilizationPct > 30 ? 10 : 0) -
-      hardInquiriesCount * 2
+      (utilizationPct != null && utilizationPct > 30 ? 10 : 0) -
+      Math.min(hardInquiriesCount, 10) * 2
   );
 
   const capitalReadinessNotes =
@@ -142,10 +159,14 @@ export function analyzeCreditReport(params: {
       transUnionScore = scoreOverrides.transUnion;
   }
   if (rawText) {
-    const parsed = parseScoreSnapshot(rawText);
-    if (experianScore == null && parsed.Experian != null) experianScore = parsed.Experian;
-    if (equifaxScore == null && parsed.Equifax != null) equifaxScore = parsed.Equifax;
-    if (transUnionScore == null && parsed.TransUnion != null) transUnionScore = parsed.TransUnion;
+    const fromReport = parseScoresFromReport(rawText);
+    const fromSnapshot = parseScoreSnapshot(rawText);
+    if (experianScore == null)
+      experianScore = fromReport.Experian ?? fromSnapshot.Experian ?? undefined;
+    if (equifaxScore == null)
+      equifaxScore = fromReport.Equifax ?? fromSnapshot.Equifax ?? undefined;
+    if (transUnionScore == null)
+      transUnionScore = fromReport.TransUnion ?? fromSnapshot.TransUnion ?? undefined;
   }
 
   const scoreSnapshot =
@@ -194,8 +215,14 @@ export async function createAuditFromAnalysis(
     utilizationPct: analysis.utilizationPct,
     summaryIssues: analysis.summaryIssues,
     recommendedSteps: analysis.recommendedSteps,
-    fundingReadinessScore: analysis.fundingReadinessScore,
     capitalReadinessNotes: analysis.capitalReadinessNotes,
+    negativeItems: analysis.negativeItems.map((item) => ({
+      accountName: item.accountName,
+      bureau: item.bureau,
+      accountType: item.accountType ?? null,
+      balance: item.balance ?? null,
+      negativeReason: item.negativeReason ?? null,
+    })),
   });
 
   const audit = await prisma.audit.create({

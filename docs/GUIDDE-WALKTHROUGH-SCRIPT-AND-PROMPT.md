@@ -10,7 +10,7 @@ Copy everything below the line into your tool.
 
 ---
 
-**Create a product walkthrough for a client portal (CreditLyft Portal). The app is a credit-repair and funding-readiness portal. Record or describe the following flow in order.**
+**Create a product walkthrough for a client portal (CreditLyft Portal). The app is a credit-repair and capital-readiness portal. Record or describe the following flow in order.**
 
 **1. First-time visit and login**
 - User lands on the portal URL (e.g. client-portal.thecredithub.io).
@@ -18,7 +18,7 @@ Copy everything below the line into your tool.
 - After sign-in, new clients are redirected to onboarding (not the dashboard).
 
 **2. Onboarding (6 steps, dark theme, orange buttons)**
-- **Step 1 — Welcome:** Heading "Welcome to Premium." Short intro that the portal is for credit reset, funding readiness, and progress. One button: "Start Onboarding."
+- **Step 1 — Welcome:** Heading "Welcome to Elite." Short intro that the portal is for credit reset, funding readiness, and progress. One button: "Start Onboarding."
 - **Step 2 — Get Credit Monitoring:** Copy says they need active credit monitoring. Two actions: "I Already Have Monitoring" (secondary) and "Get Credit Monitoring" (primary, opens affiliate in new tab). A box for "I already have monitoring" lets them upload a credit report PDF right there (Choose PDF / Uploaded) or "I'll do it later." Quick checklist: Signed up for monitoring, Can access your report, Ready to continue. Bottom CTA: "Continue to next step."
 - **Step 3 — Portal tour:** "How to Navigate Your Client Portal." Optional video embed or cards for Dashboard, Upload Center, Progress, Messages, Support. CTA: "Continue to next step."
 - **Step 4 — Upload details:** "Upload Your Credit Repair Details." Photo ID and Proof of address are required; SSN card and others optional. Each row has inline "Choose file" / "Uploaded" (files go to Document Vault). Copy says they can continue and upload later in the portal. CTA: "Continue to next step."
@@ -26,12 +26,13 @@ Copy everything below the line into your tool.
 - **Step 6 — Support:** "Need Help? / Support." Where to ask questions, reply time, direct support number. Teal completion box: "You're all set…" and one button: "Go to my dashboard." Clicking it marks onboarding complete and redirects to the dashboard.
 
 **3. Dashboard**
+- **Mobile:** Menu is collapsed by default; tap the hamburger to open the sidebar. Tap outside or the X to close.
 - Sidebar (left): CreditLyft Portal logo, then "Take the tour" button, then nav: Dashboard, Credit Import, Tasks, Progress, Messages, Agreement, Applications, Document Vault, Scripts & Guidance, Timeline, Profile. Sign out at bottom.
 - Main area: Dashboard home with score snapshot (if they uploaded a report), next steps, tasks, progress summary, charts. If no data yet, a "Get started" CTA to Credit Import.
 
 **4. Credit Import**
 - Page title: "Import your credit report."
-- If they already have a report/audit: "Your latest report" card with date, scores (e.g. EX: 620, EQ: 615, TU: 618), negative items count, funding readiness. Buttons: "View audit" and "Download audit PDF."
+- If they already have a report/audit: "Your latest report" card with date, scores (e.g. EX: 620, EQ: 615, TU: 618), and negative items count. Buttons: "View audit" and "Download audit PDF."
 - Below: "Upload a new report" — Manual upload (PDF or screenshot), optional score fields (Experian, Equifax, TransUnion), "Upload and analyze." Or switch to provider import (MyFreeScoreNow, etc.).
 
 **5. Document Vault**
@@ -39,7 +40,7 @@ Copy everything below the line into your tool.
 
 **6. Other key areas (brief)**
 - **Tasks:** List of assigned tasks (credit/funding/docs, etc.) with status.
-- **Progress:** Dispute and repair progress.
+- **Progress (Credit & progress):** Negative items table with real data from your report: account, bureau, type, status (e.g. disputed, pending, removed), round (e.g. Round 1, Round 2), whether letters have been sent and when, and date imported.
 - **Messages:** Threads with the team; unread badge in sidebar when there are unread messages.
 - **Profile:** Name, email, phone (required); optional fields; change password.
 
@@ -64,7 +65,7 @@ Use this when recording or when your AI needs exact copy for each step.
 ---
 
 ### Scene 2 — Onboarding intro (Step 1)
-**Screen:** Onboarding, Step 1 of 6. "Welcome to Premium" card.  
+**Screen:** Onboarding, Step 1 of 6. "Welcome to Elite" card.  
 **Say:** "New clients land here first. This is your central hub for credit reset and funding readiness. Click Start Onboarding to begin."  
 **Do:** Click "Start Onboarding."
 
@@ -114,7 +115,7 @@ Use this when recording or when your AI needs exact copy for each step.
 
 ### Scene 9 — Credit Import
 **Screen:** Credit Import page.  
-**Say:** "Under Credit Import you’ll see your latest report if you’ve already uploaded one — with scores, negative items, and a link to view or download the audit. Below that you can upload a new report: choose a PDF or screenshot, optionally enter your three bureau scores, and click Upload and analyze. You can also switch to provider import if you use a monitoring service."  
+**Say:** "Under Credit Import you’ll see your latest report if you’ve already uploaded one — with scores, negative items count, and a link to view or download the audit. Below that you can upload a new report: choose a PDF or screenshot, optionally enter your three bureau scores, and click Upload and analyze. You can also switch to provider import if you use a monitoring service."  
 **Do:** Show "Your latest report" card if present; show manual upload form and optional score fields.
 
 ---
@@ -128,7 +129,7 @@ Use this when recording or when your AI needs exact copy for each step.
 
 ### Scene 11 — Tasks, Progress, Messages, Profile (summary)
 **Screen:** Quick visit to each.  
-**Say:** "Tasks list what to do next. Progress shows how your dispute and repair work is moving. Messages is where you get updates and reply to your team — you’ll see an unread badge when there are new messages. In Profile you update your name, email, phone, and password."  
+**Say:** "Tasks list what to do next. Credit & Progress shows each negative item with status — disputed, pending, or removed — which round it’s in, and whether letters have been sent. Messages is where you get updates and reply to your team — you’ll see an unread badge when there are new messages. In Profile you update your name, email, phone, and password."  
 **Do:** Open each section briefly or name them in the sidebar.
 
 ---

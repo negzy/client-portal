@@ -170,9 +170,15 @@ export async function POST(req: Request) {
     ],
   });
 
+  const noDataDetected =
+    !scoreOverrides &&
+    !analysis.scoreSnapshot &&
+    analysis.negativeItems.length === 0;
+
   return NextResponse.json({
     success: true,
     auditId: audit.id,
     negativeCount: analysis.negativeItems.length,
+    noDataDetected: noDataDetected || undefined,
   });
 }

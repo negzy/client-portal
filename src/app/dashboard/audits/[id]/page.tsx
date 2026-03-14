@@ -38,7 +38,7 @@ export default async function AuditDetailPage({
         Back to dashboard
       </Link>
       <div className="card">
-        <h1 className="text-xl font-bold text-white">Credit Audit</h1>
+        <h1 className="text-xl font-bold text-white">Credit Report Analysis</h1>
         <p className="mt-1 text-slate-400">
           {audit.auditDate.toLocaleDateString("en-US", {
             weekday: "long",
@@ -69,7 +69,7 @@ export default async function AuditDetailPage({
             className="btn-primary mt-6 inline-flex items-center gap-2"
           >
             <Download className="h-4 w-4" />
-            Download audit PDF
+            Download Credit Report Analysis PDF
           </a>
         )}
       </div>

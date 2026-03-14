@@ -27,7 +27,7 @@ Use this as the **single source of truth** for what a client sees and does durin
 ### Step 1 — Welcome / Start Here
 
 - **Card:** White, rounded, soft shadow.
-- **Heading:** "Welcome to Premium"
+- **Heading:** "Welcome to Elite"
 - **Body (short):**
   - This portal is your central hub for credit reset, funding readiness, and progress tracking. Follow the steps below to get fully set up.
   - Setup only takes a few minutes. Complete each section in order for the smoothest experience.

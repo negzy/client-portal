@@ -27,7 +27,6 @@ export default async function CreditImportPage() {
               auditDate: latestAudit.auditDate.toISOString(),
               scoreSnapshot: latestAudit.scoreSnapshot,
               negativeCount: latestAudit.negativeCount,
-              fundingReadinessScore: latestAudit.fundingReadinessScore,
               pdfPath: latestAudit.pdfPath,
             }
           : null
