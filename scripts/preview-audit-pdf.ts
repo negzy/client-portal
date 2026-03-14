@@ -22,6 +22,16 @@ async function main() {
     summaryIssues: "Sample summary for preview.",
     recommendedSteps: "Sample next steps for preview.",
     capitalReadinessNotes: "Sample notes for preview.",
+    reportSummary: {
+      totalAccounts: 15,
+      openAccounts: 10,
+      closedAccounts: 5,
+      delinquent: 2,
+      balances: 12450.5,
+      payments: "On time",
+      publicRecords: 0,
+      inquiries2Years: 3,
+    },
     negativeItems: [
       { accountName: "Sample Collection Account", bureau: "Experian", accountType: "Collection", balance: 500, negativeReason: "Collection" },
       { accountName: "Another Creditor - 1234****", bureau: "Equifax", accountType: "ACCOUNTS", balance: null, negativeReason: "Late 30" },

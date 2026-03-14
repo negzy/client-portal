@@ -5,6 +5,7 @@ import {
   parseScoresFromReport,
   parseNegativeItemsFromReport,
   parseRevolvingFromReport,
+  parseSummaryFromReport,
 } from "./myfreescorenow-parser";
 
 export type NegativeItemInput = {
@@ -32,6 +33,17 @@ export type CreditAnalysis = {
   totalRevolvingBalance: number | null;
   /** Total revolving (credit card) limit from report, when parsed */
   totalRevolvingLimit: number | null;
+  /** Summary section from report (Total Accounts, Open/Closed, Delinquent, Balances, etc.) */
+  reportSummary: {
+    totalAccounts: number | null;
+    openAccounts: number | null;
+    closedAccounts: number | null;
+    delinquent: number | null;
+    balances: number | null;
+    payments: string | null;
+    publicRecords: number | null;
+    inquiries2Years: number | null;
+  };
   openAccountsCount: number;
   positiveTradelinesCount: number;
   summaryIssues: string;
@@ -118,6 +130,7 @@ export function analyzeCreditReport(params: {
     return 0;
   })();
   const revolving = rawText ? parseRevolvingFromReport(rawText) : null;
+  const summaryFromReport = rawText ? parseSummaryFromReport(rawText) : null;
   const utilizationPct: number | null = (() => {
     const m = rawText?.match(/(?:utilization|util)\s*[:\s]*(\d+(?:\.\d+)?)\s*%?/i);
     if (m) {
@@ -126,8 +139,18 @@ export function analyzeCreditReport(params: {
     }
     return revolving?.utilizationPct ?? null;
   })();
-  const totalRevolvingBalance = revolving?.totalRevolvingBalance ?? null;
+  const totalRevolvingBalance = revolving?.totalRevolvingBalance ?? summaryFromReport?.balances ?? null;
   const totalRevolvingLimit = revolving?.totalRevolvingLimit ?? null;
+  const reportSummary = summaryFromReport ?? {
+    totalAccounts: null,
+    openAccounts: null,
+    closedAccounts: null,
+    delinquent: null,
+    balances: null,
+    payments: null,
+    publicRecords: null,
+    inquiries2Years: null,
+  };
   const openAccountsCount = rawText?.match(/\bopen\s+account/gi)?.length ?? 0;
   const positiveTradelinesCount = 0;
 
@@ -197,6 +220,7 @@ export function analyzeCreditReport(params: {
     utilizationPct,
     totalRevolvingBalance,
     totalRevolvingLimit,
+    reportSummary,
     openAccountsCount,
     positiveTradelinesCount,
     summaryIssues,
@@ -225,6 +249,7 @@ export async function createAuditFromAnalysis(
     utilizationPct: analysis.utilizationPct,
     totalRevolvingBalance: analysis.totalRevolvingBalance,
     totalRevolvingLimit: analysis.totalRevolvingLimit,
+    reportSummary: analysis.reportSummary,
     summaryIssues: analysis.summaryIssues,
     recommendedSteps: analysis.recommendedSteps,
     capitalReadinessNotes: analysis.capitalReadinessNotes,

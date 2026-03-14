@@ -6,7 +6,8 @@ Place image files here to make the Credit Report Analysis PDF more visually appe
 
 | File | Where it appears | Suggested size |
 |------|------------------|----------------|
-| **logo.png** | Page 1 (cover) and Page 5 (Let's Get Started) | ~280×88 px or similar (will be scaled to 140×44 pt in PDF) |
+| **auditsccc.png** | Page 1 (cover) — with "Credit Analysis for [Name]" below | Pre-added |
+| **logo.png** | Page 5 (Let's Get Started) | ~280×88 px or similar (will be scaled to 140×44 pt in PDF) |
 | **icon-envelope.png** | Page 5 (Let's Get Started), above the "Let's Get Started!" heading | ~96×96 px (displayed at 48×48 pt) |
 
 If a file is missing, the PDF falls back to text (“THE CREDIT HUB” and a ✉ character).

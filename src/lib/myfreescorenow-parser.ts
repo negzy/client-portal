@@ -398,3 +398,84 @@ export function parseRevolvingFromReport(text: string): {
 
   return { totalRevolvingBalance: totalBalance, totalRevolvingLimit: totalLimit, utilizationPct };
 }
+
+/** Extract numeric value after a label (e.g. "Total Accounts: 15" or "Total Accounts 15") */
+function parseLabelNumber(text: string, label: string): number | null {
+  const patterns = [
+    new RegExp(`${label}\\s*[:\\s]+(\\d+)`, "i"),
+    new RegExp(`${label}[^\\d]*(\\d+)`, "i"),
+  ];
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (Number.isFinite(n) && n >= 0) return n;
+    }
+  }
+  return null;
+}
+
+/** Extract dollar amount after a label */
+function parseLabelAmount(text: string, label: string): number | null {
+  const p = new RegExp(`${label}\\s*[:\\s]*\\$?\\s*([\\d,]+(?:\\.\\d{2})?)`, "i");
+  const m = text.match(p);
+  if (!m) return null;
+  const n = parseFloat(m[1].replace(/,/g, ""));
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+/**
+ * Parse the Summary section from MyFreeScoreNow (after personal information).
+ * Returns: Total Accounts, Open Accounts, Closed Accounts, Delinquent, Balances, Payments, Public Records, Inquiries (2 years).
+ */
+export function parseSummaryFromReport(text: string): {
+  totalAccounts: number | null;
+  openAccounts: number | null;
+  closedAccounts: number | null;
+  delinquent: number | null;
+  balances: number | null;
+  payments: string | null;
+  publicRecords: number | null;
+  inquiries2Years: number | null;
+} {
+  const t = text.trim();
+  if (!t || t.length < 50) {
+    return {
+      totalAccounts: null,
+      openAccounts: null,
+      closedAccounts: null,
+      delinquent: null,
+      balances: null,
+      payments: null,
+      publicRecords: null,
+      inquiries2Years: null,
+    };
+  }
+
+  const totalAccounts = parseLabelNumber(t, "Total Accounts") ?? parseLabelNumber(t, "Total accounts");
+  const openAccounts = parseLabelNumber(t, "Open Accounts") ?? parseLabelNumber(t, "Open accounts");
+  const closedAccounts = parseLabelNumber(t, "Closed Accounts") ?? parseLabelNumber(t, "Closed accounts");
+  const delinquent = parseLabelNumber(t, "Delinquent") ?? parseLabelNumber(t, "Delinquent accounts");
+  const balances = parseLabelAmount(t, "Balances") ?? parseLabelAmount(t, "Balance") ?? parseLabelAmount(t, "Total balance");
+  const publicRecords = parseLabelNumber(t, "Public Records") ?? parseLabelNumber(t, "Public records");
+  const inquiries2Years =
+    parseLabelNumber(t, "Inquiries \\(2 years\\)") ??
+    parseLabelNumber(t, "Inquiries \\(2 year") ??
+    parseLabelNumber(t, "Inquiries 2 years") ??
+    parseLabelNumber(t, "Inquiries");
+
+  let payments: string | null = null;
+  const paymentsMatch = t.match(/(?:Payments?|Payment history)\s*[:\s]*([^\n\r]+?)(?=\n|$)/i);
+  if (paymentsMatch) payments = paymentsMatch[1].trim().slice(0, 80);
+
+  return {
+    totalAccounts,
+    openAccounts,
+    closedAccounts,
+    delinquent,
+    balances,
+    payments,
+    publicRecords,
+    inquiries2Years,
+  };
+}
