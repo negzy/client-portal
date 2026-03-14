@@ -55,7 +55,7 @@ export function parseScoresFromReport(
   }
 
   // Strategy 2: score then bureau (e.g. "691 06/20/2025 Experian" or "691\nExperian")
-  const scoreThenBureau = t.matchAll(/(\d{3})\s*[\d/\s]*\s*(Experian|Equifax|TransUnion)/gi);
+  const scoreThenBureau = Array.from(t.matchAll(/(\d{3})\s*[\d/\s]*\s*(Experian|Equifax|TransUnion)/gi));
   for (const m of scoreThenBureau) {
     const score = parseInt(m[1], 10);
     const bureau = m[2].toLowerCase();

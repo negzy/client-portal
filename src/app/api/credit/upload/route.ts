@@ -85,23 +85,16 @@ export async function POST(req: Request) {
     }
   }
 
-  // Extract text from PDF for score and negative-item parsing
+  // Extract text from PDF using unpdf (Vercel/serverless-safe; pdf-parse fails with DOMMatrix/canvas)
   let rawText: string | undefined;
+  let extractedLength = 0;
   if ((type === "pdf" || file.type === "application/pdf") && buffer.length > 0) {
     try {
-      const { PDFParse } = await import("pdf-parse");
-      const parser = new PDFParse({ data: buffer });
-      const result = await parser.getText();
-      rawText = (result && typeof result === "object" && "text" in result)
-        ? String((result as { text?: string }).text ?? "")
-        : "";
-      if (!rawText?.trim() && result && typeof result === "object" && "pages" in result) {
-        const pages = (result as { pages?: Array<{ text?: string }> }).pages;
-        if (Array.isArray(pages)) {
-          rawText = pages.map((p) => (p && typeof p === "object" && "text" in p ? String(p.text ?? "") : "")).join("\n");
-        }
-      }
-      rawText = rawText?.trim() || undefined;
+      const { getDocumentProxy, extractText } = await import("unpdf");
+      const pdf = await getDocumentProxy(new Uint8Array(buffer));
+      const { text } = await extractText(pdf, { mergePages: true });
+      rawText = typeof text === "string" ? text.trim() : undefined;
+      extractedLength = rawText?.length ?? 0;
     } catch (e) {
       console.error("PDF text extraction failed:", e);
     }
@@ -189,5 +182,6 @@ export async function POST(req: Request) {
     auditId: audit.id,
     negativeCount: analysis.negativeItems.length,
     noDataDetected: noDataDetected || undefined,
+    extractedLength,
   });
 }

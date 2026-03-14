@@ -25,11 +25,11 @@
     "lucide-react": "^0.454.0",
     "next": "14.2.15",
     "next-auth": "^4.24.7",
-    "pdf-parse": "^2.4.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.15.4",
     "resend": "^6.9.3",
+    "unpdf": "^1.4.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

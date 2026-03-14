@@ -14,6 +14,7 @@ export function ManualUploadForm() {
   const [equifaxScore, setEquifaxScore] = useState("");
   const [transUnionScore, setTransUnionScore] = useState("");
   const [noDataMessage, setNoDataMessage] = useState(false);
+  const [noDataExtracted, setNoDataExtracted] = useState(false);
 
   async function handleFileSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,10 +44,11 @@ export function ManualUploadForm() {
       if (data.noDataDetected) {
         setError("");
         setNoDataMessage(true);
+        setNoDataExtracted((data.extractedLength ?? 0) === 0);
         setTimeout(() => {
           if (data.auditId) router.push(`/dashboard/audits/${data.auditId}`);
           else router.push("/dashboard");
-        }, 4000);
+        }, 5000);
         return;
       }
       if (data.auditId) router.push(`/dashboard/audits/${data.auditId}`);
@@ -100,26 +102,10 @@ export function ManualUploadForm() {
         </div>
       ) : (
         <form onSubmit={handleFileSubmit} className="space-y-4">
-          <div>
-            <label className="label">
-              {mode === "pdf"
-                ? "Upload credit report PDF"
-                : "Upload screenshot(s)"}
-            </label>
-            <div className="mt-2 flex items-center gap-4">
-              <input
-                type="file"
-                accept={mode === "pdf" ? "application/pdf" : "image/*"}
-                multiple={mode === "screenshot"}
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                className="block w-full text-sm text-slate-400 file:mr-4 file:rounded-xl file:border-0 file:bg-brand-500 file:px-4 file:py-2.5 file:font-medium file:text-white file:hover:bg-brand-400"
-              />
-            </div>
-          </div>
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-            <p className="text-sm font-medium text-amber-200">Enter your 3 bureau scores from the report</p>
+          <div className="rounded-lg border border-brand-500/40 bg-brand-500/10 p-4">
+            <p className="text-sm font-medium text-white">Enter your 3 bureau scores (300–850)</p>
             <p className="mt-1 text-xs text-slate-400">
-              Scores are read from the PDF when possible. Enter them below (300–850) to correct, override, or if the PDF doesn&apos;t auto-fill — that way you always get a complete Credit Report Analysis.
+              We try to read scores from the PDF, but many PDFs don&apos;t support that. Enter your Experian, Equifax, and TransUnion scores here so your Credit Report Analysis is always complete.
             </p>
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
               <div>
@@ -160,10 +146,29 @@ export function ManualUploadForm() {
               </div>
             </div>
           </div>
+          <div>
+            <label className="label">
+              {mode === "pdf"
+                ? "Upload credit report PDF"
+                : "Upload screenshot(s)"}
+            </label>
+            <div className="mt-2 flex items-center gap-4">
+              <input
+                type="file"
+                accept={mode === "pdf" ? "application/pdf" : "image/*"}
+                multiple={mode === "screenshot"}
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                className="block w-full text-sm text-slate-400 file:mr-4 file:rounded-xl file:border-0 file:bg-brand-500 file:px-4 file:py-2.5 file:font-medium file:text-white file:hover:bg-brand-400"
+              />
+            </div>
+          </div>
           {error && <p className="text-sm text-red-400">{error}</p>}
           {noDataMessage && (
             <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">
-              We couldn&apos;t read scores or items from this PDF (it may be image-only or a different format). Your file was saved. Enter your 3 bureau scores above and upload again for a full Credit Report Analysis, or view your audit now.
+              {noDataExtracted
+                ? "No text could be read from this PDF (it may be image-only or scanned). Your file was saved. Enter your 3 bureau scores above and click Upload again to get a full Credit Report Analysis."
+                : "We couldn't find scores or items in the PDF. Enter your 3 bureau scores above and click Upload again for a full report."}
+              {" "}You can also view your audit now.
             </p>
           )}
           <p className="text-xs text-slate-500">
