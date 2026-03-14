@@ -182,11 +182,14 @@ export function parseNegativeItemsFromReport(text: string): ParsedNegativeItem[]
     const lower = s.trim().toLowerCase();
     if (NOT_ACCOUNT_NAME.test(lower)) return -1;
     let score = 0;
-    if (/\b(card|bank|jpmcb|chase|capital\s*one|citi|discover|amex|wells\s*fargo|synchrony)\b/i.test(lower)) score += 2;
+    if (/\b(card|bank|jpmcb|jpmorgan|chase|capital\s*one|citi|discover|amex|wells\s*fargo|synchrony)\b/i.test(lower)) score += 2;
     if (/^[A-Za-z0-9\s\-&]+$/.test(s) && s.length <= 50) score += 1;
     if (/\d{4}\s*\*+\s*$/.test(s)) score += 1; // "1234****" style
     return score;
   }
+
+  // Known creditor/tradeline patterns – if we find one of these in a line above the negative line, prefer it
+  const CREDITOR_PATTERN = /\b(jpmcb|jpmorgan|chase|capital\s*one|citi|discover|amex|wells\s*fargo|synchrony|navy\s*federal|us\s*bank|barclays|pnc|usaa)\b/i;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -215,15 +218,32 @@ export function parseNegativeItemsFromReport(text: string): ParsedNegativeItem[]
 
     let accountName = "";
     let bestScore = -1;
-    for (let j = 1; j <= 3 && i - j >= 0; j++) {
+    const lookback = 8; // look up to 8 lines back (past "Vantage Score" etc.) to find creditor name
+
+    for (let j = 1; j <= lookback && i - j >= 0; j++) {
       const prev = lines[i - j].trim();
       if (!looksLikeAccountName(prev)) continue;
       const candidate = prev.replace(/\b(Experian|Equifax|TransUnion|EX|EQ|TU)\b/gi, "").trim();
-      if (candidate.length < 3) continue;
+      if (candidate.length < 2) continue;
       const s = creditorScore(candidate);
       if (s > bestScore) {
         bestScore = s;
         accountName = candidate;
+      }
+    }
+
+    // If still no name, scan the preceding block for a line containing a known creditor pattern (e.g. JPMCB, Chase)
+    if (accountName.length < 2) {
+      for (let j = 1; j <= lookback && i - j >= 0; j++) {
+        const prev = lines[i - j].trim();
+        if (NOT_ACCOUNT_NAME.test(prev)) continue;
+        if (CREDITOR_PATTERN.test(prev)) {
+          const candidate = prev.replace(/\b(Experian|Equifax|TransUnion|EX|EQ|TU)\b/gi, "").trim();
+          if (candidate.length >= 2 && candidate.length <= 80) {
+            accountName = candidate;
+            break;
+          }
+        }
       }
     }
 

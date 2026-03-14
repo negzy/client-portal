@@ -112,10 +112,17 @@ export async function POST(req: Request) {
     },
   });
 
-  const fullName =
+  const toTitleCase = (s: string) =>
+    s
+      .trim()
+      .split(/\s+/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(" ");
+  const rawName =
     [profile.firstName, profile.lastName].filter(Boolean).join(" ").trim() ||
     session.user?.name ||
     "Client";
+  const fullName = toTitleCase(rawName) || "Client";
 
   const analysis = analyzeCreditReport({
     fileName: file.name,

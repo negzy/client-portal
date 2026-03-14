@@ -564,8 +564,6 @@ function AuditDocument(props: AuditPdfProps) {
     </>
   );
 
-  const summary = props.reportSummary;
-
   return (
     <Document>
       {/* Page 1: Cover – image + Credit Analysis for [Name] only (no scores, no dispute table) */}
@@ -578,47 +576,8 @@ function AuditDocument(props: AuditPdfProps) {
         <Footer page={1} />
       </Page>
 
-      {/* Page 2: Report Summary (from PDF) + Understanding Credit Scores */}
+      {/* Page 2: Understanding Credit Scores */}
       <Page size="A4" style={styles.page}>
-        {summary && (summary.totalAccounts != null || summary.openAccounts != null || summary.balances != null || summary.delinquent != null || summary.publicRecords != null || summary.inquiries2Years != null) ? (
-          <View style={styles.summaryBox}>
-            <Text style={styles.summaryTitle}>Report Summary</Text>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Total Accounts</Text>
-              <Text style={styles.summaryValue}>{summary.totalAccounts != null ? summary.totalAccounts : "—"}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Open Accounts</Text>
-              <Text style={styles.summaryValue}>{summary.openAccounts != null ? summary.openAccounts : "—"}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Closed Accounts</Text>
-              <Text style={styles.summaryValue}>{summary.closedAccounts != null ? summary.closedAccounts : "—"}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Delinquent</Text>
-              <Text style={styles.summaryValue}>{summary.delinquent != null ? summary.delinquent : "—"}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Balances</Text>
-              <Text style={styles.summaryValue}>{summary.balances != null ? `$${summary.balances.toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "—"}</Text>
-            </View>
-            {summary.payments ? (
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Payments</Text>
-                <Text style={styles.summaryValue}>{summary.payments}</Text>
-              </View>
-            ) : null}
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Public Records</Text>
-              <Text style={styles.summaryValue}>{summary.publicRecords != null ? summary.publicRecords : "—"}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Inquiries (2 years)</Text>
-              <Text style={styles.summaryValue}>{summary.inquiries2Years != null ? summary.inquiries2Years : "—"}</Text>
-            </View>
-          </View>
-        ) : null}
         <Text style={styles.eduTitle}>Understanding Credit Scores</Text>
         <Text style={styles.eduSub}>
           There are a lot of factors that go into your credit score. Your score will also vary depending on which Credit Bureau the lender decides to use for your application. Understanding how it all works will empower you to build and maintain a great score going forward.
@@ -797,17 +756,6 @@ function AuditDocument(props: AuditPdfProps) {
         <Text style={styles.usageIntro}>
           If you're carrying high balances, try to pay your balances down to below 25% of the available credit limit of each card. Never spend more than that, even if you pay the bill off in full each month.
         </Text>
-        <View style={styles.usageBox}>
-          <Text style={styles.usageLabel}>Revolving (credit cards)</Text>
-          {(props.totalRevolvingBalance != null || props.totalRevolvingLimit != null) && (
-            <Text style={styles.usageIntro}>
-              Total balance: {props.totalRevolvingBalance != null ? `$${props.totalRevolvingBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "—"}
-              {" · "}
-              Total limit: {props.totalRevolvingLimit != null ? `$${props.totalRevolvingLimit.toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "—"}
-            </Text>
-          )}
-          <Text style={styles.usageValue}>Utilization: {props.utilizationPct != null ? `${props.utilizationPct}%` : "—"}</Text>
-        </View>
         <View style={styles.usageScale}>
           <View style={[styles.usageScaleSegment, { backgroundColor: "#22c55e" }]}>
             <Text style={styles.usageScaleLabel}>Excellent</Text>
