@@ -163,6 +163,31 @@ export function parseNegativeItemsFromReport(text: string): ParsedNegativeItem[]
   let currentBureau: Bureau | null = null;
   const seen = new Set<string>();
 
+  // Blocklist: never use these as account name (score partners, product names, headers)
+  const NOT_ACCOUNT_NAME =
+    /vantage\s*score|credit\s*score\s*partner|partnered|\.0\s*credit|experian\s*score|equifax\s*score|transunion\s*score|fico|score\s*summary|your\s*score|report\s*date|account\s*number\s*:\s*\d|^\s*\d{4}\s*$/i;
+
+  function looksLikeAccountName(s: string): boolean {
+    const t = s.trim();
+    if (t.length < 3 || t.length > 80) return false;
+    if (NOT_ACCOUNT_NAME.test(t)) return false;
+    if (negativeTypeRegex.test(t) || sectionHeaders.some((r) => r.test(t))) return false;
+    if (/^(Experian|Equifax|TransUnion|EX|EQ|TU|account|creditor|name|bureau)$/i.test(t)) return false;
+    if (/^\d+$|^\d+\s*[-/]\s*\d+/.test(t)) return false;
+    if (/\d{3}-\d{2}-\d{4}/.test(t)) return false;
+    return true;
+  }
+
+  function creditorScore(s: string): number {
+    const lower = s.trim().toLowerCase();
+    if (NOT_ACCOUNT_NAME.test(lower)) return -1;
+    let score = 0;
+    if (/\b(card|bank|jpmcb|chase|capital\s*one|citi|discover|amex|wells\s*fargo|synchrony)\b/i.test(lower)) score += 2;
+    if (/^[A-Za-z0-9\s\-&]+$/.test(s) && s.length <= 50) score += 1;
+    if (/\d{4}\s*\*+\s*$/.test(s)) score += 1; // "1234****" style
+    return score;
+  }
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const lineLower = line.toLowerCase();
@@ -187,32 +212,6 @@ export function parseNegativeItemsFromReport(text: string): ParsedNegativeItem[]
 
     const balance = parseBalance(line);
     const bureau: Bureau = bureauInLine ?? currentBureau ?? "Experian";
-
-    // Blocklist: never use these as account name (score partners, product names, headers)
-    const NOT_ACCOUNT_NAME =
-      /vantage\s*score|credit\s*score\s*partner|partnered|\.0\s*credit|experian\s*score|equifax\s*score|transunion\s*score|fico|score\s*summary|your\s*score|report\s*date|account\s*number\s*:\s*\d|^\s*\d{4}\s*$/i;
-
-    function looksLikeAccountName(s: string): boolean {
-      const t = s.trim();
-      if (t.length < 3 || t.length > 80) return false;
-      if (NOT_ACCOUNT_NAME.test(t)) return false;
-      if (negativeTypeRegex.test(t) || sectionHeaders.some((r) => r.test(t))) return false;
-      if (/^(Experian|Equifax|TransUnion|EX|EQ|TU|account|creditor|name|bureau)$/i.test(t)) return false;
-      if (/^\d+$|^\d+\s*[-/]\s*\d+/.test(t)) return false;
-      if (/\d{3}-\d{2}-\d{4}/.test(t)) return false;
-      return true;
-    }
-
-    // Prefer lines that look like creditor/card names (JPMCB, Chase, Capital One, "card", "bank", etc.)
-    function creditorScore(s: string): number {
-      const lower = s.trim().toLowerCase();
-      if (NOT_ACCOUNT_NAME.test(lower)) return -1;
-      let score = 0;
-      if (/\b(card|bank|jpmcb|chase|capital\s*one|citi|discover|amex|wells\s*fargo|synchrony)\b/i.test(lower)) score += 2;
-      if (/^[A-Za-z0-9\s\-&]+$/.test(s) && s.length <= 50) score += 1;
-      if (/\d{4}\s*\*+\s*$/.test(s)) score += 1; // "1234****" style
-      return score;
-    }
 
     let accountName = "";
     let bestScore = -1;
