@@ -1,30 +1,19 @@
 import { PrismaClient } from "@prisma/client";
 
-const globalForPrisma = globalThis as unknown as { prisma: ReturnType<typeof createPrismaClient> };
+/**
+ * One PrismaClient per serverless instance (Vercel lambda warm container).
+ * Do NOT call $connect() before every query — that burns pooler sessions and triggers
+ * Supabase "MaxClientsInSessionMode" when combined with Session pooler or low pool size.
+ *
+ * Vercel production DATABASE_URL must use a **transaction** pooler (e.g. Supabase port 6543)
+ * with `?pgbouncer=true` (not Session mode on 5432). See `.env.example`.
+ */
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
-function createPrismaClient() {
-  const base = new PrismaClient({
+export const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
   });
 
-  // In production (Vercel serverless), the pooler may close connections between warm requests.
-  // Reconnecting before each query avoids "Error { kind: Closed }".
-  if (process.env.NODE_ENV === "production") {
-    return base.$extends({
-      name: "reconnect",
-      query: {
-        $allOperations({ operation, args, query }) {
-          return Promise.resolve(base.$connect())
-            .catch(() => {})
-            .then(() => query(args));
-        },
-      },
-    }) as unknown as PrismaClient;
-  }
-
-  return base;
-}
-
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
-
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+globalForPrisma.prisma = prisma;
