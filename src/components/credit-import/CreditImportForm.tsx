@@ -9,6 +9,7 @@ export function CreditImportForm({ providers }: { providers: readonly Provider[]
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const [form, setForm] = useState({
     provider: "",
     username: "",
@@ -22,6 +23,7 @@ export function CreditImportForm({ providers }: { providers: readonly Provider[]
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setInfo("");
     setLoading(true);
     try {
       const res = await fetch("/api/credit/import", {
@@ -42,9 +44,9 @@ export function CreditImportForm({ providers }: { providers: readonly Provider[]
         setError(data.error ?? "Import failed");
         return;
       }
+      setInfo(typeof data.message === "string" ? data.message : "");
       router.refresh();
       if (data.auditId) router.push(`/dashboard/audits/${data.auditId}`);
-      else router.push("/dashboard");
     } finally {
       setLoading(false);
     }
@@ -53,6 +55,11 @@ export function CreditImportForm({ providers }: { providers: readonly Provider[]
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <h2 className="section-heading">Provider credentials</h2>
+      <p className="text-sm text-slate-400">
+        Direct API import only runs when your organization configures{" "}
+        <code className="rounded bg-surface-border px-1 text-xs">CREDIT_IMPORT_WEBHOOK_URL</code> to receive
+        this request. Otherwise we store your details for staff and you should upload your PDF for instant analysis.
+      </p>
 
       <div>
         <label htmlFor="provider" className="label">
@@ -167,6 +174,11 @@ export function CreditImportForm({ providers }: { providers: readonly Provider[]
       </div>
 
       {error && <p className="text-sm text-red-400">{error}</p>}
+      {info && (
+        <p className="rounded-lg border border-brand-500/40 bg-brand-500/10 px-3 py-2 text-sm text-slate-200">
+          {info}
+        </p>
+      )}
 
       <button
         type="submit"

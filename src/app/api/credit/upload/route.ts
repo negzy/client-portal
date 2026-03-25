@@ -25,23 +25,6 @@ export async function POST(req: Request) {
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
   const type = (formData.get("type") as string) || "pdf";
-  const experianScoreRaw = formData.get("experianScore") as string | null;
-  const equifaxScoreRaw = formData.get("equifaxScore") as string | null;
-  const transUnionScoreRaw = formData.get("transUnionScore") as string | null;
-
-  const parseScore = (raw: string | null): number | undefined => {
-    if (raw == null || String(raw).trim() === "") return undefined;
-    const n = parseInt(String(raw).trim(), 10);
-    if (Number.isNaN(n) || n < 300 || n > 850) return undefined;
-    return n;
-  };
-  const scoreOverrides = (() => {
-    const ex = parseScore(experianScoreRaw);
-    const eq = parseScore(equifaxScoreRaw);
-    const tu = parseScore(transUnionScoreRaw);
-    if (ex == null && eq == null && tu == null) return undefined;
-    return { experian: ex, equifax: eq, transUnion: tu };
-  })();
 
   if (!file?.size) {
     return NextResponse.json(
@@ -52,7 +35,15 @@ export async function POST(req: Request) {
 
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
-  const ext = path.extname(file.name) || (type === "pdf" ? ".pdf" : ".jpg");
+  const nameLower = file.name.toLowerCase();
+  const mime = (file.type || "").toLowerCase();
+  if (type !== "pdf" || (!mime.includes("pdf") && !nameLower.endsWith(".pdf"))) {
+    return NextResponse.json(
+      { error: "Only PDF credit reports are accepted. Export your 3-bureau report as PDF from your monitoring site." },
+      { status: 400 }
+    );
+  }
+  const ext = path.extname(file.name) || ".pdf";
   const baseName = `${randomUUID()}${ext}`;
   let filePath: string;
 
@@ -60,7 +51,7 @@ export async function POST(req: Request) {
     const blobUrl = await uploadToBlob(
       buffer,
       `credit/${profile.id}/${baseName}`,
-      { contentType: file.type || (type === "pdf" ? "application/pdf" : "image/jpeg") }
+      { contentType: file.type || "application/pdf" }
     );
     if (!blobUrl) {
       return NextResponse.json(
@@ -88,7 +79,7 @@ export async function POST(req: Request) {
   // Extract text from PDF using unpdf (Vercel/serverless-safe; pdf-parse fails with DOMMatrix/canvas)
   let rawText: string | undefined;
   let extractedLength = 0;
-  if ((type === "pdf" || file.type === "application/pdf") && buffer.length > 0) {
+  if (buffer.length > 0) {
     try {
       const { getDocumentProxy, extractText } = await import("unpdf");
       const pdf = await getDocumentProxy(new Uint8Array(buffer));
@@ -126,9 +117,8 @@ export async function POST(req: Request) {
 
   const analysis = analyzeCreditReport({
     fileName: file.name,
-    type,
+    type: "pdf",
     clientName: fullName,
-    scoreOverrides,
     rawText: rawText?.trim() || undefined,
   });
 
@@ -184,10 +174,7 @@ export async function POST(req: Request) {
     ],
   });
 
-  const noDataDetected =
-    !scoreOverrides &&
-    !analysis.scoreSnapshot &&
-    analysis.negativeItems.length === 0;
+  const noDataDetected = !analysis.scoreSnapshot && analysis.negativeItems.length === 0;
 
   return NextResponse.json({
     success: true,

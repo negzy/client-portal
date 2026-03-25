@@ -56,12 +56,15 @@ export async function POST(req: Request) {
     },
   });
 
-  // MVP: No direct provider integration. Return success and suggest manual upload
-  // so the client can still get an audit via PDF/screenshot upload.
+  // No consumer-monitoring vendor ships a self-serve REST API for “paste credentials and pull PDF”
+  // without a reseller / enterprise contract. Credentials are stored for staff follow-up; audit is via upload.
+  const webhookConfigured = Boolean(process.env.CREDIT_IMPORT_WEBHOOK_URL?.trim());
   return NextResponse.json({
     importId: creditImport.id,
-    message:
-      "Import request received. If automatic import is not available, please use Manual Upload to submit your credit report PDF or screenshots.",
+    automaticImportAvailable: webhookConfigured,
+    message: webhookConfigured
+      ? "Your import request was sent for automated processing. You will receive an audit when the report is pulled. If nothing arrives within one business day, upload your PDF manually."
+      : "We saved your provider and sign-in details for your team. This portal does not yet pull reports directly from the monitoring site (that requires a vendor API or automation you enable server-side). For an immediate Credit Report Analysis, go back and upload your 3-bureau PDF — scores and negatives are parsed automatically.",
     auditId: null as string | null,
   });
 }

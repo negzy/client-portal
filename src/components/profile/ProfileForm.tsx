@@ -13,6 +13,9 @@ type Initial = {
   state: string;
   zip: string;
   dateOfBirth: string;
+  creditMonitoringEmail: string;
+  creditMonitoringUsername: string;
+  creditMonitoringNotes: string;
   businessName: string;
   businessEntityType: string;
   llcState: string;
@@ -58,6 +61,9 @@ export function ProfileForm({
           llcState: form.llcState?.trim() || undefined,
           ein: form.ein?.trim() || undefined,
           preferredContactMethod: form.preferredContactMethod || undefined,
+          creditMonitoringEmail: form.creditMonitoringEmail?.trim() || null,
+          creditMonitoringUsername: form.creditMonitoringUsername?.trim() || null,
+          creditMonitoringNotes: form.creditMonitoringNotes?.trim() || null,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -178,6 +184,44 @@ export function ProfileForm({
             className="input-field"
           />
         </div>
+      </div>
+
+      <h2 className="section-heading mt-8">
+        Credit monitoring <span className="text-slate-500 font-normal text-sm">(optional)</span>
+      </h2>
+      <p className="text-sm text-slate-400">
+        Save the login or member details for your monitoring service so your file stays complete. Do not share passwords in unsecured email — the portal is the right place for this.
+      </p>
+      <div>
+        <label className="label" htmlFor="profile-cm-email">Monitoring login email</label>
+        <input
+          id="profile-cm-email"
+          type="email"
+          value={form.creditMonitoringEmail}
+          onChange={(e) => setForm((f) => ({ ...f, creditMonitoringEmail: e.target.value }))}
+          className="input-field"
+          placeholder="e.g. the email you use on MyFreeScoreNow"
+        />
+      </div>
+      <div>
+        <label className="label" htmlFor="profile-cm-user">Username / member ID</label>
+        <input
+          id="profile-cm-user"
+          value={form.creditMonitoringUsername}
+          onChange={(e) => setForm((f) => ({ ...f, creditMonitoringUsername: e.target.value }))}
+          className="input-field"
+          placeholder="If different from email"
+        />
+      </div>
+      <div>
+        <label className="label" htmlFor="profile-cm-notes">Notes</label>
+        <textarea
+          id="profile-cm-notes"
+          value={form.creditMonitoringNotes}
+          onChange={(e) => setForm((f) => ({ ...f, creditMonitoringNotes: e.target.value }))}
+          className="input-field min-h-[4rem]"
+          placeholder="Portal URL, security word hints, or other non-password details you want on file"
+        />
       </div>
 
       <h2 className="section-heading mt-8">Business <span className="text-slate-500 font-normal text-sm">(optional)</span></h2>

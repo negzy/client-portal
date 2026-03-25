@@ -6,7 +6,110 @@ import {
   parseNegativeItemsFromReport,
   parseRevolvingFromReport,
   parseSummaryFromReport,
+  parseHardInquiryCountFromReport,
+  parseFactorsAffectingFromReport,
+  parseTradelinePastDueNegatives,
 } from "./myfreescorenow-parser";
+
+export type FactorsAffectingReport = {
+  equifax: string[];
+  experian: string[];
+  transUnion: string[];
+};
+
+const LATE_MATRIX_SEVERITIES = ["Late 30", "Late 60", "Late 90", "Late 120"] as const;
+type LateMatrixSeverity = (typeof LATE_MATRIX_SEVERITIES)[number];
+
+function parseLateReportCountFromReason(reason: string | null | undefined): number {
+  if (!reason) return 1;
+  const m = reason.match(/report count:\s*(\d+)/i);
+  return m ? parseInt(m[1], 10) : 1;
+}
+
+function isLateMatrixSeverity(t: string | null | undefined): t is LateMatrixSeverity {
+  return (
+    t === "Late 30" || t === "Late 60" || t === "Late 90" || t === "Late 120"
+  );
+}
+
+export type LatePaymentMatrixRow = {
+  accountName: string;
+  cell30: string;
+  cell60: string;
+  cell90: string;
+  cell120: string;
+  rowTotal: number;
+};
+
+export type LatePaymentMatrix = {
+  rows: LatePaymentMatrixRow[];
+  grandTotal: number;
+};
+
+/** One row per account; cells show EQ:/EX:/TU: counts from the report past-due table. */
+export function buildLatePaymentMatrixFromNegativeItems(items: NegativeItemInput[]): LatePaymentMatrix {
+  const bureaus = ["Equifax", "Experian", "TransUnion"] as const;
+  const byAccount = new Map<string, Map<LateMatrixSeverity, Map<string, number>>>();
+
+  for (const it of items) {
+    if (!isLateMatrixSeverity(it.accountType)) continue;
+    const sev = it.accountType;
+    const bureau = it.bureau;
+    const n = parseLateReportCountFromReason(it.negativeReason);
+    if (!byAccount.has(it.accountName)) {
+      const m = new Map<LateMatrixSeverity, Map<string, number>>();
+      for (const s of LATE_MATRIX_SEVERITIES) m.set(s, new Map());
+      byAccount.set(it.accountName, m);
+    }
+    const am = byAccount.get(it.accountName)!;
+    const sm = am.get(sev)!;
+    sm.set(bureau, Math.max(sm.get(bureau) ?? 0, n));
+  }
+
+  function formatCell(bureauMap: Map<string, number>): string {
+    const parts: string[] = [];
+    for (const b of bureaus) {
+      const num = bureauMap.get(b) ?? 0;
+      if (num <= 0) continue;
+      const abbr = b === "Equifax" ? "EQ" : b === "Experian" ? "EX" : "TU";
+      parts.push(`${abbr}:${num}`);
+    }
+    return parts.length > 0 ? parts.join(" ") : "—";
+  }
+
+  const accountsSorted = Array.from(byAccount.keys()).sort((a, b) => a.localeCompare(b));
+  const rows: LatePaymentMatrixRow[] = [];
+  let grandTotal = 0;
+
+  for (const acc of accountsSorted) {
+    const am = byAccount.get(acc)!;
+    let rowSum = 0;
+    for (const sev of LATE_MATRIX_SEVERITIES) {
+      const bm = am.get(sev)!;
+      for (const b of bureaus) rowSum += bm.get(b) ?? 0;
+    }
+    grandTotal += rowSum;
+    rows.push({
+      accountName: acc,
+      cell30: formatCell(am.get("Late 30")!),
+      cell60: formatCell(am.get("Late 60")!),
+      cell90: formatCell(am.get("Late 90")!),
+      cell120: formatCell(am.get("Late 120")!),
+      rowTotal: rowSum,
+    });
+  }
+
+  return { rows, grandTotal };
+}
+
+function mergeNegativeItems(items: NegativeItemInput[]): NegativeItemInput[] {
+  const map = new Map<string, NegativeItemInput>();
+  for (const it of items) {
+    const key = `${it.accountName}|${it.bureau}|${it.accountType ?? ""}|${it.negativeReason ?? ""}`;
+    map.set(key, it);
+  }
+  return Array.from(map.values());
+}
 
 export type NegativeItemInput = {
   accountName: string;
@@ -50,6 +153,10 @@ export type CreditAnalysis = {
   recommendedSteps: string;
   fundingReadinessScore: number;
   capitalReadinessNotes: string;
+  /** Score factors as they appear on the 3-bureau report */
+  factorsAffecting: FactorsAffectingReport;
+  /** Account × 30/60/90/120 past-due counts from structured parse */
+  latePaymentMatrix: LatePaymentMatrix;
 };
 
 const SCORE_MIN = 300;
@@ -69,9 +176,30 @@ export function parseScoreSnapshot(
 
   // Bureau-specific patterns: match bureau name/abbrev then optional colon/space then digits (300-850)
   const bureauPatterns: { key: "Experian" | "Equifax" | "TransUnion"; patterns: RegExp[] }[] = [
-    { key: "Experian", patterns: [/\bExperian\s*[:\s]*(\d{3})\b/i, /\bEX\s*[:\s]*(\d{3})\b/i] },
-    { key: "Equifax", patterns: [/\bEquifax\s*[:\s]*(\d{3})\b/i, /\bEQ\s*[:\s]*(\d{3})\b/i] },
-    { key: "TransUnion", patterns: [/\bTransUnion\s*[:\s]*(\d{3})\b/i, /\bTU\s*[:\s]*(\d{3})\b/i] },
+    {
+      key: "Experian",
+      patterns: [
+        /\bExperian\s*\d*\s+(\d{3})(?:\s|$)/i,
+        /\bExperian\s*[:\s]*(\d{3})\b/i,
+        /\bEX\s*[:\s]*(\d{3})\b/i,
+      ],
+    },
+    {
+      key: "Equifax",
+      patterns: [
+        /\bEquifax\s*\d*\s+(\d{3})(?:\s|$)/i,
+        /\bEquifax\s*[:\s]*(\d{3})\b/i,
+        /\bEQ\s*[:\s]*(\d{3})\b/i,
+      ],
+    },
+    {
+      key: "TransUnion",
+      patterns: [
+        /\bTransUnion\s*\d*\s+(\d{3})(?:\s|$)/i,
+        /\bTransUnion\s*[:\s]*(\d{3})\b/i,
+        /\bTU\s*[:\s]*(\d{3})\b/i,
+      ],
+    },
   ];
 
   for (const { key, patterns } of bureauPatterns) {
@@ -102,17 +230,30 @@ export function analyzeCreditReport(params: {
 }): CreditAnalysis {
   const { clientName, scoreOverrides, rawText } = params;
 
-  // Parse from MyFreeScoreNow (or similar) PDF text when available; otherwise no sample placeholders
+  const factorsAffecting = rawText?.trim()
+    ? parseFactorsAffectingFromReport(rawText)
+    : { equifax: [], experian: [], transUnion: [] };
+
   let negativeItems: NegativeItemInput[] = [];
   if (rawText?.trim()) {
-    const parsed = parseNegativeItemsFromReport(rawText);
-    negativeItems = parsed.map((p) => ({
-      accountName: p.accountName,
-      bureau: p.bureau,
-      accountType: p.accountType ?? undefined,
-      balance: p.balance ?? undefined,
-      negativeReason: p.negativeReason ?? undefined,
-    }));
+    const fromReport = parseNegativeItemsFromReport(rawText);
+    const fromPastDue = parseTradelinePastDueNegatives(rawText);
+    negativeItems = mergeNegativeItems([
+      ...fromReport.map((p) => ({
+        accountName: p.accountName,
+        bureau: p.bureau,
+        accountType: p.accountType ?? undefined,
+        balance: p.balance ?? undefined,
+        negativeReason: p.negativeReason ?? undefined,
+      })),
+      ...fromPastDue.map((p) => ({
+        accountName: p.accountName,
+        bureau: p.bureau,
+        accountType: p.accountType ?? undefined,
+        balance: p.balance ?? undefined,
+        negativeReason: p.negativeReason ?? undefined,
+      })),
+    ]);
   }
 
   const collectionsCount = negativeItems.filter((i) =>
@@ -121,14 +262,8 @@ export function analyzeCreditReport(params: {
   const chargeOffsCount = negativeItems.filter((i) =>
     i.accountType?.toLowerCase().includes("charge")
   ).length;
-  const hardInquiriesCount = (() => {
-    const m = rawText?.match(/(?:hard\s+)?inquir(?:y|ies)\s*[:\s]*(\d+)|(\d+)\s*(?:hard\s+)?inquir/i);
-    if (m) {
-      const n = parseInt(m[1] ?? m[2] ?? "0", 10);
-      if (Number.isFinite(n) && n >= 0 && n <= 50) return n;
-    }
-    return 0;
-  })();
+  const hardInqParsed = rawText?.trim() ? parseHardInquiryCountFromReport(rawText) : null;
+  const hardInquiriesCount = hardInqParsed?.displayMax ?? 0;
   const revolving = rawText ? parseRevolvingFromReport(rawText) : null;
   const summaryFromReport = rawText ? parseSummaryFromReport(rawText) : null;
   const utilizationPct: number | null = (() => {
@@ -154,10 +289,24 @@ export function analyzeCreditReport(params: {
   const openAccountsCount = rawText?.match(/\bopen\s+account/gi)?.length ?? 0;
   const positiveTradelinesCount = 0;
 
+  const latePaymentsCount = negativeItems.filter((i) =>
+    /late\s*(?:30|60|90|120)\b/i.test(i.accountType ?? "")
+  ).length;
+  const latePaymentMatrix = buildLatePaymentMatrixFromNegativeItems(negativeItems);
+
   const summaryIssues = [
     collectionsCount ? `${collectionsCount} collection(s)` : "",
     chargeOffsCount ? `${chargeOffsCount} charge-off(s)` : "",
-    hardInquiriesCount ? `${hardInquiriesCount} hard inquiry(ies)` : "",
+    latePaymentsCount
+      ? `${latePaymentsCount} late-payment tradeline detail(s) (30/60/90/120 from account sections)`
+      : "",
+    hardInquiriesCount
+      ? `${hardInquiriesCount} hard inquiry(ies)${
+          hardInqParsed?.perBureau
+            ? ` (EQ ${hardInqParsed.perBureau.equifax}, EX ${hardInqParsed.perBureau.experian}, TU ${hardInqParsed.perBureau.transUnion})`
+            : ""
+        }`
+      : "",
   ]
     .filter(Boolean)
     .join("; ") || "Review your report for details.";
@@ -170,6 +319,7 @@ export function analyzeCreditReport(params: {
     100 -
       collectionsCount * 15 -
       chargeOffsCount * 20 -
+      Math.min(latePaymentsCount, 20) * 3 -
       (utilizationPct != null && utilizationPct > 30 ? 10 : 0) -
       Math.min(hardInquiriesCount, 10) * 2
   );
@@ -213,7 +363,7 @@ export function analyzeCreditReport(params: {
     negativeItems,
     collectionsCount,
     chargeOffsCount,
-    latePaymentsCount: 0,
+    latePaymentsCount,
     repossessionsCount: 0,
     bankruptciesCount: 0,
     hardInquiriesCount,
@@ -227,6 +377,8 @@ export function analyzeCreditReport(params: {
     recommendedSteps,
     fundingReadinessScore,
     capitalReadinessNotes,
+    factorsAffecting,
+    latePaymentMatrix,
   };
 }
 
@@ -260,6 +412,8 @@ export async function createAuditFromAnalysis(
       balance: item.balance ?? null,
       negativeReason: item.negativeReason ?? null,
     })),
+    factorsAffecting: analysis.factorsAffecting,
+    latePaymentMatrix: analysis.latePaymentMatrix,
   });
 
   const audit = await prisma.audit.create({

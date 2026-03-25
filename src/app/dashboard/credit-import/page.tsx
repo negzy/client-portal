@@ -3,6 +3,10 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { CreditImportContent } from "@/components/credit-import/CreditImportContent";
+import {
+  auditNegativeImportWindow,
+  isStructuredLatePaymentAccountType,
+} from "@/lib/audit-import-window";
 
 export default async function CreditImportPage() {
   const session = await getServerSession(authOptions);
@@ -18,6 +22,32 @@ export default async function CreditImportPage() {
     orderBy: { createdAt: "desc" },
   });
 
+  let latePaymentsFromLatestImport: {
+    accountName: string;
+    bureau: string;
+    accountType: string | null;
+    negativeReason: string | null;
+  }[] = [];
+
+  if (latestAudit) {
+    const importWindow = auditNegativeImportWindow(latestAudit.createdAt);
+    const batch = await prisma.negativeItem.findMany({
+      where: {
+        clientProfileId: profile.id,
+        dateImported: { gte: importWindow.gte, lte: importWindow.lte },
+      },
+      orderBy: [{ accountName: "asc" }, { bureau: "asc" }, { accountType: "asc" }],
+    });
+    latePaymentsFromLatestImport = batch
+      .filter((n) => isStructuredLatePaymentAccountType(n.accountType))
+      .map((n) => ({
+        accountName: n.accountName,
+        bureau: n.bureau,
+        accountType: n.accountType,
+        negativeReason: n.negativeReason,
+      }));
+  }
+
   return (
     <CreditImportContent
       latestAudit={
@@ -28,6 +58,7 @@ export default async function CreditImportPage() {
               scoreSnapshot: latestAudit.scoreSnapshot,
               negativeCount: latestAudit.negativeCount,
               pdfPath: latestAudit.pdfPath,
+              latePayments: latePaymentsFromLatestImport,
             }
           : null
       }

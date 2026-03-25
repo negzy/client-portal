@@ -4,6 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Download, ArrowLeft } from "lucide-react";
+import {
+  auditNegativeImportWindow,
+  isStructuredLatePaymentAccountType,
+} from "@/lib/audit-import-window";
+import { LatePaymentsList } from "@/components/credit/LatePaymentsList";
 
 export default async function AuditDetailPage({
   params,
@@ -23,6 +28,18 @@ export default async function AuditDetailPage({
     where: { id, clientProfileId: profile.id },
   });
   if (!audit) notFound();
+
+  const importWindow = auditNegativeImportWindow(audit.createdAt);
+  const importBatchNegatives = await prisma.negativeItem.findMany({
+    where: {
+      clientProfileId: profile.id,
+      dateImported: { gte: importWindow.gte, lte: importWindow.lte },
+    },
+    orderBy: [{ accountName: "asc" }, { bureau: "asc" }, { accountType: "asc" }],
+  });
+  const latePayments = importBatchNegatives.filter((n) =>
+    isStructuredLatePaymentAccountType(n.accountType)
+  );
 
   const downloadUrl = audit.pdfPath
     ? `/api/documents/download?path=${encodeURIComponent(audit.pdfPath)}`
@@ -72,6 +89,17 @@ export default async function AuditDetailPage({
             Download Credit Report Analysis PDF
           </a>
         )}
+      </div>
+
+      <div className="card">
+        <h2 className="text-lg font-semibold text-white">Late payments (parsed)</h2>
+        <p className="mt-1 text-sm text-slate-400">
+          Rows tied to this report upload ({latePayments.length} of {importBatchNegatives.length} negative items in this
+          import batch).
+        </p>
+        <div className="mt-4">
+          <LatePaymentsList items={latePayments} />
+        </div>
       </div>
     </div>
   );

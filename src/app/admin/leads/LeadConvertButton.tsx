@@ -47,8 +47,13 @@ export function LeadConvertButton({ contactId, contactEmail }: { contactId: stri
       </button>
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-sm rounded-xl border border-surface-border bg-surface-card p-6">
-            <h3 className="font-semibold text-white">Convert lead to client</h3>
+          <div
+            className="w-full max-w-sm rounded-xl border border-surface-border bg-surface-card p-6"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="convert-lead-title"
+          >
+            <h3 id="convert-lead-title" className="font-semibold text-white">Convert lead to client</h3>
             <p className="mt-1 text-sm text-slate-400">
               Creates a new account for <strong>{contactEmail}</strong>. They can sign in with this email and the password you set.
             </p>
@@ -66,7 +71,7 @@ export function LeadConvertButton({ contactId, contactEmail }: { contactId: stri
             <div className="mt-6 flex gap-3">
               <button
                 type="button"
-                onClick={() => { setOpen(false); setError(""); }}
+                onClick={() => { setOpen(false); setError(""); setPassword(""); }}
                 className="btn-secondary flex-1"
               >
                 Cancel

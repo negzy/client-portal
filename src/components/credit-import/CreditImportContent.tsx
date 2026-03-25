@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { CreditImportForm } from "@/components/credit-import/CreditImportForm";
 import { ManualUploadForm } from "@/components/credit-import/ManualUploadForm";
+import { LatePaymentsList } from "@/components/credit/LatePaymentsList";
 import { Shield, FileText, ArrowRight, Download } from "lucide-react";
 
 const PROVIDERS = [
@@ -19,6 +20,12 @@ type LatestAudit = {
   scoreSnapshot: string | null;
   negativeCount: number;
   pdfPath: string | null;
+  latePayments: Array<{
+    accountName: string;
+    bureau: string;
+    accountType: string | null;
+    negativeReason: string | null;
+  }>;
 };
 
 export function CreditImportContent({
@@ -33,10 +40,10 @@ export function CreditImportContent({
       <div>
         <h1 className="page-title">Import your credit report</h1>
         <p className="page-sub">
-          Upload a PDF or screenshot of your report — we'll read your scores when possible. You can also enter scores manually.
+          Upload your full 3-bureau report as a PDF, or save monitoring credentials for your team if automatic import is enabled for your organization.
         </p>
         <p className="mt-1 text-sm text-slate-400">
-          We automatically analyze your report and generate a Credit Report Analysis (audit) when you upload — no extra steps. For accurate analysis, upload a credit report PDF (e.g. MyFreeScoreNow). Other documents (ID, utility bill, etc.) go in Document Vault.
+          Analysis reads scores, inquiries, score factors, per-account late-payment details, and collections from the PDF text. IDs and utility bills belong in Document Vault, not here.
         </p>
       </div>
 
@@ -65,6 +72,16 @@ export function CreditImportContent({
               <p className="text-xs text-slate-500 uppercase tracking-wider">Negative items</p>
               <p className="mt-0.5 font-medium text-white">{latestAudit.negativeCount}</p>
             </div>
+            <div>
+              <p className="text-xs text-slate-500 uppercase tracking-wider">Late payments (parsed)</p>
+              <p className="mt-0.5 font-medium text-white">{latestAudit.latePayments.length}</p>
+            </div>
+          </div>
+          <div className="mt-6">
+            <h3 className="text-sm font-medium text-slate-300">Late payment list (verify)</h3>
+            <div className="mt-3">
+              <LatePaymentsList items={latestAudit.latePayments} />
+            </div>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
@@ -89,9 +106,7 @@ export function CreditImportContent({
       )}
 
       <section className="card-elevated p-6">
-        <h2 className="section-heading">
-          {latestAudit ? "Upload a new report" : "Manual upload"}
-        </h2>
+        <h2 className="section-heading">{latestAudit ? "Upload a new report" : "Upload report (PDF)"}</h2>
         {!showProviderImport ? (
           <>
             <ManualUploadForm />
@@ -113,7 +128,7 @@ export function CreditImportContent({
           <>
             <p className="mb-4 flex items-center gap-2 text-sm text-slate-400">
               <Shield className="h-4 w-4 text-brand-500" />
-              Secure encrypted import · Your credentials are used only for report retrieval
+              Credentials are stored for your program — automated pull requires a configured backend webhook or vendor API, not a public monitoring-site link
             </p>
             <CreditImportForm providers={PROVIDERS} />
             <button
@@ -121,7 +136,7 @@ export function CreditImportContent({
               onClick={() => setShowProviderImport(false)}
               className="btn-secondary mt-6"
             >
-              ← Back to PDF / screenshot upload
+              ← Back to report upload (PDF)
             </button>
           </>
         )}

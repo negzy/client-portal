@@ -179,6 +179,12 @@ model ClientProfile {
   llcState             String?  @map("llc_state")
   ein                  String?  @map("ein")
   preferredContactMethod String? @map("preferred_contact_method")
+  creditMonitoringEmail    String? @map("credit_monitoring_email")
+  creditMonitoringUsername String? @map("credit_monitoring_username")
+  creditMonitoringNotes    String? @map("credit_monitoring_notes") @db.Text
+  adminNotesCfpb              String? @map("admin_notes_cfpb") @db.Text
+  adminNotesCreditMonitoring  String? @map("admin_notes_credit_monitoring") @db.Text
+  adminNotesEmail             String? @map("admin_notes_email") @db.Text
   notes                String?  @db.Text
   internalNotes        String?  @map("internal_notes") @db.Text
   status               String?  @default("active")

@@ -33,6 +33,9 @@ prisma/migrations/**/migration_lock.toml
 # uploads (user data)
 uploads/
 
+# local credit report samples (do not commit PII)
+maria_lanham_credit_report.pdf
+
 # local preview
 preview-audit.pdf
 

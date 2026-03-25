@@ -10,9 +10,11 @@ export function AddAffiliateForm() {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setError("");
     setLoading(true);
     try {
       const res = await fetch("/api/admin/affiliates", {
@@ -22,7 +24,7 @@ export function AddAffiliateForm() {
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        alert(d.error ?? "Failed to add");
+        setError(d.error ?? "Failed to add");
         return;
       }
       setOpen(false);
@@ -37,12 +39,12 @@ export function AddAffiliateForm() {
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="btn-primary">
+      <button type="button" onClick={() => { setOpen(true); setError(""); }} className="btn-primary">
         Add affiliate
       </button>
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-sm rounded-xl border border-surface-border bg-surface-card p-6">
+          <div className="w-full max-w-sm rounded-xl border border-surface-border bg-surface-card p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-semibold text-white">Add affiliate</h3>
             <form onSubmit={handleSubmit} className="mt-4 space-y-3">
               <div>
@@ -76,8 +78,9 @@ export function AddAffiliateForm() {
                   className="input-field mt-1"
                 />
               </div>
+              {error && <p className="text-sm text-red-400">{error}</p>}
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setOpen(false)} className="btn-secondary flex-1">
+                <button type="button" onClick={() => { setOpen(false); setError(""); }} className="btn-secondary flex-1">
                   Cancel
                 </button>
                 <button type="submit" disabled={loading} className="btn-primary flex-1">

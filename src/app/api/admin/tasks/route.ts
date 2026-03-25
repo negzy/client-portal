@@ -13,6 +13,8 @@ const schema = z.object({
   category: z.enum(["Credit", "Funding", "Docs", "BankSetup", "Applications", "Internal"]).default("Credit"),
   dueDate: z.string().datetime().optional().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
   notes: z.string().optional(),
+  /** User id: must be this client or an admin. */
+  assignedToId: z.string().optional().nullable(),
 });
 
 export async function POST(req: Request) {
@@ -35,6 +37,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Client not found" }, { status: 404 });
   }
 
+  let assignedToId: string | undefined;
+  if (body.assignedToId) {
+    const assignee = await prisma.user.findUnique({
+      where: { id: body.assignedToId },
+      select: { id: true, role: true },
+    });
+    if (!assignee) {
+      return NextResponse.json({ error: "Assignee not found" }, { status: 404 });
+    }
+    if (assignee.role !== "ADMIN" && assignee.id !== profile.userId) {
+      return NextResponse.json({ error: "Can only assign to this client or an admin" }, { status: 400 });
+    }
+    assignedToId = assignee.id;
+  }
+
   const dueDate = body.dueDate
     ? new Date(body.dueDate)
     : undefined;
@@ -49,6 +66,7 @@ export async function POST(req: Request) {
       dueDate,
       notes: body.notes ?? undefined,
       assignedById: session.user.id,
+      assignedToId,
     },
   });
 

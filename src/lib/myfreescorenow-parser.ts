@@ -17,9 +17,30 @@ const BUREAUS: Bureau[] = ["Experian", "Equifax", "TransUnion"];
 
 /** Score patterns: bureau name/abbrev then optional punctuation then 3-digit score (300-850) */
 const SCORE_PATTERNS: { key: Bureau; patterns: RegExp[] }[] = [
-  { key: "Experian", patterns: [/\bExperian\s*[:\s\-]*(\d{3})\b/i, /\bEX\s*[:\s\-]*(\d{3})\b/i] },
-  { key: "Equifax", patterns: [/\bEquifax\s*[:\s\-]*(\d{3})\b/i, /\bEQ\s*[:\s\-]*(\d{3})\b/i] },
-  { key: "TransUnion", patterns: [/\bTransUnion\s*[:\s\-]*(\d{3})\b/i, /\bTU\s*[:\s\-]*(\d{3})\b/i] },
+  {
+    key: "Equifax",
+    patterns: [
+      /\bEquifax\s*\d*\s+(\d{3})(?:\s|$)/i,
+      /\bEquifax\s*[:\s\-]*(\d{3})\b/i,
+      /\bEQ\s*[:\s\-]*(\d{3})\b/i,
+    ],
+  },
+  {
+    key: "Experian",
+    patterns: [
+      /\bExperian\s*\d*\s+(\d{3})(?:\s|$)/i,
+      /\bExperian\s*[:\s\-]*(\d{3})\b/i,
+      /\bEX\s*[:\s\-]*(\d{3})\b/i,
+    ],
+  },
+  {
+    key: "TransUnion",
+    patterns: [
+      /\bTransUnion\s*\d*\s+(\d{3})(?:\s|$)/i,
+      /\bTransUnion\s*[:\s\-]*(\d{3})\b/i,
+      /\bTU\s*[:\s\-]*(\d{3})\b/i,
+    ],
+  },
 ];
 
 const SCORE_MIN = 300;
@@ -54,8 +75,10 @@ export function parseScoresFromReport(
     }
   }
 
-  // Strategy 2: score then bureau (e.g. "691 06/20/2025 Experian" or "691\nExperian")
-  const scoreThenBureau = Array.from(t.matchAll(/(\d{3})\s*[\d/\s]*\s*(Experian|Equifax|TransUnion)/gi));
+  // Strategy 2: score then bureau (e.g. "691 06/20/2025 Experian") — only valid FICO/Vantage range
+  const scoreThenBureau = Array.from(
+    t.matchAll(/(\d{3})\s*[\d/\s,.]*\s*(Experian|Equifax|TransUnion)\b/gi)
+  );
   for (const m of scoreThenBureau) {
     const score = parseInt(m[1], 10);
     const bureau = m[2].toLowerCase();
@@ -83,6 +106,264 @@ export function parseScoresFromReport(
   }
 
   return out;
+}
+
+/**
+ * Human-readable creditor line (PDF often uses THD/CBNA, all-caps, etc.).
+ */
+export function prettifyCreditorName(raw: string): string {
+  const s = raw.replace(/\s+/g, " ").trim();
+  if (!s) return s;
+  if (s.length > 80) return s.slice(0, 80).trim();
+  // Split slash segments: THD/CBNA → nicer spacing
+  if (s.includes("/")) {
+    return s
+      .split(/\s*\/\s*/)
+      .map((part) =>
+        part
+          .split(/\s+/)
+          .map((w) => {
+            if (w.length <= 2 && w === w.toLowerCase()) return w.toUpperCase();
+            if (/^[A-Z0-9]+$/.test(w) && w.length > 1) {
+              return w.charAt(0) + w.slice(1).toLowerCase();
+            }
+            return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+          })
+          .join(" ")
+      )
+      .join(" / ");
+  }
+  return s
+    .split(/\s+/)
+    .map((w) => {
+      if (/^[A-Z0-9]{2,}$/.test(w)) return w.charAt(0) + w.slice(1).toLowerCase();
+      return w;
+    })
+    .join(" ");
+}
+
+/**
+ * Hard-style inquiry counts from 3-bureau summary (NOT soft pulls).
+ * Uses the "Other Credit Items" row: Inquiries EQ EX TU — we take the max across bureaus
+ * so one real inquiry that appears on all three is not triple-counted in the audit headline.
+ */
+export function parseHardInquiryCountFromReport(text: string): {
+  perBureau: { equifax: number; experian: number; transUnion: number } | null;
+  /** Use for audit & funding readiness headline */
+  displayMax: number | null;
+} {
+  const t = text.trim();
+  if (!t) return { perBureau: null, displayMax: null };
+
+  const asTriple = (a: string, b: string, c: string) => {
+    const x = parseInt(a, 10);
+    const y = parseInt(b, 10);
+    const z = parseInt(c, 10);
+    if (![x, y, z].every((n) => Number.isFinite(n) && n >= 0 && n <= 999)) return null;
+    return { equifax: x, experian: y, transUnion: z, max: Math.max(x, y, z) };
+  };
+
+  // Same line often: "Personal Information 6 5 6 Inquiries 0 1 6"
+  const glued = t.match(
+    /Personal Information\s+\d{1,3}\s+\d{1,3}\s+\d{1,3}\s+Inquiries\s+(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})\b/i
+  );
+  if (glued) {
+    const r = asTriple(glued[1], glued[2], glued[3]);
+    if (r) {
+      return {
+        perBureau: { equifax: r.equifax, experian: r.experian, transUnion: r.transUnion },
+        displayMax: r.max,
+      };
+    }
+  }
+
+  // "Other Credit Items" block: header row Equifax / Experian / TransUnion then summary lines
+  const oci = t.match(
+    /Other Credit Items[\s\S]{0,4000}?(?=2\.\s*Revolving|2\.\d+\s+|Experian Accounts Summary|Mar \d+,\s*20\d{2} Three Bureau)/i
+  );
+  if (oci) {
+    const block = oci[0];
+    const row = block.match(/\bInquiries\s+(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})\b/i);
+    if (row) {
+      const r = asTriple(row[1], row[2], row[3]);
+      if (r) {
+        return {
+          perBureau: { equifax: r.equifax, experian: r.experian, transUnion: r.transUnion },
+          displayMax: r.max,
+        };
+      }
+    }
+  }
+
+  // Section 9 actual lines: count explicit "hard" inquiries only (avoids soft / promo noise)
+  const sec9 = t.match(/9\.\s*Inquiries[\s\S]{0,15000}?(?=10\.\s*Public Records|11\.\s*Collections|12\.\s*Dispute|$)/i);
+  if (sec9) {
+    const hard = sec9[0].match(/\bhard\s+inquir(?:y|ies)\b/gi);
+    if (hard && hard.length > 0) {
+      return { perBureau: null, displayMax: hard.length };
+    }
+  }
+
+  return { perBureau: null, displayMax: null };
+}
+
+/**
+ * Verbatim-style factors under "Factors affecting your credit score" (Equifax / Experian / TransUnion blocks).
+ */
+export function parseFactorsAffectingFromReport(text: string): {
+  equifax: string[];
+  experian: string[];
+  transUnion: string[];
+} {
+  const empty = { equifax: [] as string[], experian: [] as string[], transUnion: [] as string[] };
+  const m = text.match(
+    /Factors affecting your credit score\s+Equifax\s+([\s\S]+?)\s+Experian\s+([\s\S]+?)\s+TransUnion\s+([\s\S]+?)(?=\s+Mar \d+,\s*\d{4})/i
+  );
+  if (!m) return empty;
+  const splitBody = (body: string) =>
+    body
+      .split(/\s+(?=You have\b|Lack of\b|The date that\b|The number of\b)/i)
+      .map((s) => s.replace(/\s+/g, " ").trim())
+      .filter((s) => s.length > 8);
+  return {
+    equifax: splitBody(m[1]),
+    experian: splitBody(m[2]),
+    transUnion: splitBody(m[3]),
+  };
+}
+
+const BUREAU_ORDER_PASTDUE: Bureau[] = ["Equifax", "Experian", "TransUnion"];
+
+function parsePastDueTripletVal(raw: string): number {
+  const t = raw.trim().toUpperCase();
+  if (t === "N/A") return 0;
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
+/**
+ * Per tradeline subsection (e.g. 2.1 Thd/cbna): read Account Details-style rows
+ * 30/60/90/120 Days Past Due with Equifax / Experian / TransUnion columns.
+ */
+export function parseTradelinePastDueNegatives(text: string): ParsedNegativeItem[] {
+  const items: ParsedNegativeItem[] = [];
+  const seen = new Set<string>();
+  const t = text.trim();
+  if (!t) return items;
+
+  const parts = t.split(/(?=\d+\.\d+\s+)/);
+  const severities: { pattern: string; type: string }[] = [
+    { pattern: "30\\s*Days\\s*Past\\s*Due", type: "Late 30" },
+    { pattern: "60\\s*Days\\s*Past\\s*Due", type: "Late 60" },
+    { pattern: "90\\s*Days\\s*Past\\s*Due", type: "Late 90" },
+    { pattern: "120\\s*Days\\s*Past\\s*Due", type: "Late 120" },
+  ];
+
+  for (const part of parts) {
+    const head = part.match(
+      /^\d+\.\d+\s+(.+?)(?=\s+(?:Your debt-to-credit|Payment History|The tables below shows|Account Details)\b)/i
+    );
+    if (!head) continue;
+    let creditor = head[1].replace(/\s*\(CLOSED\)\s*$/i, "").trim();
+    creditor = creditor.replace(/\s+Your\s+debt-to-credit.*$/i, "").trim();
+    if (creditor.length < 2 || creditor.length > 80) continue;
+    if (/^(payment history|account details|revolving)$/i.test(creditor)) continue;
+
+    for (const { pattern, type } of severities) {
+      const re = new RegExp(
+        `${pattern}\\s+(\\d+|N\\/A)\\s+(\\d+|N\\/A)\\s+(\\d+|N\\/A)`,
+        "i"
+      );
+      const rm = part.match(re);
+      if (!rm) continue;
+      const counts = [parsePastDueTripletVal(rm[1]), parsePastDueTripletVal(rm[2]), parsePastDueTripletVal(rm[3])];
+      for (let bi = 0; bi < 3; bi++) {
+        const n = counts[bi];
+        if (n <= 0) continue;
+        const bureau = BUREAU_ORDER_PASTDUE[bi];
+        const key = `${creditor}|${bureau}|${type}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        items.push({
+          accountName: prettifyCreditorName(creditor).slice(0, 255),
+          bureau,
+          accountType: type,
+          negativeReason: `${type} (report count: ${n})`,
+        });
+      }
+    }
+  }
+  return items;
+}
+
+/** MyFreeScoreNow / Equifax PDF: collections section with "Agency Client:" per bureau */
+export function parseCollectionAccountsFromReport(text: string): ParsedNegativeItem[] {
+  const items: ParsedNegativeItem[] = [];
+  const sectionMatch = text.match(
+    /Collections stay on your credit report[\s\S]*?(?=12\.\s*Dispute File Information|$)/i
+  );
+  if (!sectionMatch) return items;
+  const section = sectionMatch[0];
+  const seen = new Set<string>();
+  const re =
+    /(Experian|Equifax|TransUnion)\s+Date Reported:\s*[\s\S]*?Agency Client:\s*([^\n]+?)(?=\s+(?:Experian|Equifax|TransUnion)\s+Date Reported|$)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(section)) !== null) {
+    const bureau = m[1] as Bureau;
+    let accountName = m[2].replace(/\s+/g, " ").trim();
+    accountName = accountName.replace(/\s+(?:TransUnion|Experian|Equifax)\s*$/i, "").trim();
+    if (accountName.length < 2 || accountName.length > 120) continue;
+    const tail = section.slice(m.index, Math.min(section.length, m.index + 500));
+    const amt = tail.match(/Amount\s+\$?\s*([\d,]+(?:\.\d{2})?)/i);
+    const balance = amt ? parseFloat(amt[1].replace(/,/g, "")) : undefined;
+    const dedupe = `${accountName}|${bureau}|collection`;
+    if (seen.has(dedupe)) continue;
+    seen.add(dedupe);
+    items.push({
+      accountName: accountName.slice(0, 255),
+      bureau,
+      accountType: "Collection",
+      balance: Number.isFinite(balance) ? balance : undefined,
+      negativeReason: "Collection account",
+    });
+  }
+
+  if (items.length === 0) return items;
+
+  const byBalance = new Map<number, ParsedNegativeItem[]>();
+  for (const it of items) {
+    const k = Math.round(Number(it.balance) || 0);
+    const g = byBalance.get(k) ?? [];
+    g.push(it);
+    byBalance.set(k, g);
+  }
+  const out: ParsedNegativeItem[] = [];
+  for (const group of Array.from(byBalance.values())) {
+    const bestName = group.reduce(
+      (best, g) => (g.accountName.length > best.length ? g.accountName : best),
+      group[0].accountName
+    );
+    const canonical = prettifyCreditorName(bestName).slice(0, 255);
+    for (const g of group) {
+      out.push({ ...g, accountName: canonical });
+    }
+  }
+  return out;
+}
+
+function isCreditEducationBoilerplate(line: string): boolean {
+  const t = line.trim();
+  return (
+    /^you have\b/i.test(t) ||
+    /^lack of\b/i.test(t) ||
+    /^the date that\b/i.test(t) ||
+    /^you have either\b/i.test(t) ||
+    /^the number of inquiries\b/i.test(t) ||
+    /factors affecting your credit score/i.test(t) ||
+    /proprietary credit model/i.test(t) ||
+    /vantagescore/i.test(t) ||
+    /educational use/i.test(t)
+  );
 }
 
 /** Negative account type keywords (report wording) */
@@ -161,11 +442,12 @@ export function parseNegativeItemsFromReport(text: string): ParsedNegativeItem[]
   ];
 
   let currentBureau: Bureau | null = null;
+  let currentSubsectionCreditor: string | null = null;
   const seen = new Set<string>();
 
   // Blocklist: never use these as account name (score partners, product names, headers)
   const NOT_ACCOUNT_NAME =
-    /vantage\s*score|credit\s*score\s*partner|partnered|\.0\s*credit|experian\s*score|equifax\s*score|transunion\s*score|fico|score\s*summary|your\s*score|report\s*date|account\s*number\s*:\s*\d|^\s*\d{4}\s*$/i;
+    /vantage\s*score|credit\s*score\s*partner|powered\s+by|three\s+bureau\s+credit\s+report|page\s+\d+\s+of\s+\d+|partnered|\.0\s*credit|experian\s*score|equifax\s*score|transunion\s*score|fico|score\s*summary|your\s*score|report\s*date|account\s*number\s*:\s*\d|^\s*\d{4}\s*$/i;
 
   function looksLikeAccountName(s: string): boolean {
     const t = s.trim();
@@ -195,6 +477,33 @@ export function parseNegativeItemsFromReport(text: string): ParsedNegativeItem[]
     const line = lines[i];
     const lineLower = line.toLowerCase();
 
+    if (isCreditEducationBoilerplate(line)) continue;
+
+    // Structured Account Details table (avoid duplicate with parseTradelinePastDueNegatives)
+    if (/\d+\s*Days\s*Past\s*Due\s+(\d+|N\/A)\s+(\d+|N\/A)\s+(\d+|N\/A)/i.test(line)) continue;
+
+    // Major section "2. Revolving Accounts" — not a tradeline "2.1 Name"
+    if (/^(\d+)\.\s+[A-Za-z]/.test(line) && !/^\d+\.\d+/.test(line)) {
+      currentSubsectionCreditor = null;
+    }
+
+    const subAccount = line.match(/^(\d+)\.(\d+)\s+(.+)$/);
+    if (subAccount) {
+      let cand = subAccount[3].trim();
+      cand = cand.replace(/\s*\(CLOSED\)\s*$/i, "").trim();
+      const cut = cand.split(/\s+(?:Your debt-to-credit|Payment History|Account Details|Revolving)/i)[0];
+      cand = cut.trim();
+      if (
+        cand.length >= 2 &&
+        cand.length <= 70 &&
+        !negativeTypeRegex.test(cand) &&
+        !detectBureau(cand) &&
+        !/^account\s+details$/i.test(cand)
+      ) {
+        currentSubsectionCreditor = cand;
+      }
+    }
+
     // Update current bureau from section/line context
     const bureauInLine = detectBureau(line);
     if (bureauInLine) currentBureau = bureauInLine;
@@ -217,18 +526,27 @@ export function parseNegativeItemsFromReport(text: string): ParsedNegativeItem[]
     const bureau: Bureau = bureauInLine ?? currentBureau ?? "Experian";
 
     let accountName = "";
+    if (
+      currentSubsectionCreditor &&
+      /\b(Past Due|Days Past Due|Charge Off|Collection Account|derogatory)\b/i.test(line)
+    ) {
+      accountName = currentSubsectionCreditor;
+    }
+
     let bestScore = -1;
     const lookback = 8; // look up to 8 lines back (past "Vantage Score" etc.) to find creditor name
 
-    for (let j = 1; j <= lookback && i - j >= 0; j++) {
-      const prev = lines[i - j].trim();
-      if (!looksLikeAccountName(prev)) continue;
-      const candidate = prev.replace(/\b(Experian|Equifax|TransUnion|EX|EQ|TU)\b/gi, "").trim();
-      if (candidate.length < 2) continue;
-      const s = creditorScore(candidate);
-      if (s > bestScore) {
-        bestScore = s;
-        accountName = candidate;
+    if (!accountName) {
+      for (let j = 1; j <= lookback && i - j >= 0; j++) {
+        const prev = lines[i - j].trim();
+        if (!looksLikeAccountName(prev)) continue;
+        const candidate = prev.replace(/\b(Experian|Equifax|TransUnion|EX|EQ|TU)\b/gi, "").trim();
+        if (candidate.length < 2) continue;
+        const s = creditorScore(candidate);
+        if (s > bestScore) {
+          bestScore = s;
+          accountName = candidate;
+        }
       }
     }
 
@@ -268,6 +586,7 @@ export function parseNegativeItemsFromReport(text: string): ParsedNegativeItem[]
       if (fromLine.length >= 2 && fromLine.length <= 80 && !NOT_ACCOUNT_NAME.test(fromLine))
         accountName = fromLine;
     }
+    if (accountName.length < 2 && currentSubsectionCreditor) accountName = currentSubsectionCreditor;
     if (accountName.length < 2) accountName = line.slice(0, 60).trim() || "Unknown account";
     if (NOT_ACCOUNT_NAME.test(accountName)) accountName = "Unknown account";
 
@@ -288,7 +607,7 @@ export function parseNegativeItemsFromReport(text: string): ParsedNegativeItem[]
       : typeStr;
 
     items.push({
-      accountName: accountName.slice(0, 255),
+      accountName: prettifyCreditorName(accountName).slice(0, 255),
       bureau,
       accountType,
       balance: balance ?? undefined,
@@ -315,13 +634,21 @@ export function parseNegativeItemsFromReport(text: string): ParsedNegativeItem[]
       if (seen.has(dedupeKey)) continue;
       seen.add(dedupeKey);
       items.push({
-        accountName: accountName.slice(0, 255),
+        accountName: prettifyCreditorName(accountName).slice(0, 255),
         bureau,
         accountType,
         balance: balance ?? undefined,
         negativeReason: accountType,
       });
     }
+  }
+
+  const fromCollections = parseCollectionAccountsFromReport(t);
+  for (const c of fromCollections) {
+    const k = `${c.accountName}|${c.bureau}|collection-agency`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    items.push(c);
   }
 
   return items;
@@ -478,11 +805,13 @@ export function parseSummaryFromReport(text: string): {
   const delinquent = parseLabelNumber(t, "Delinquent") ?? parseLabelNumber(t, "Delinquent accounts");
   const balances = parseLabelAmount(t, "Balances") ?? parseLabelAmount(t, "Balance") ?? parseLabelAmount(t, "Total balance");
   const publicRecords = parseLabelNumber(t, "Public Records") ?? parseLabelNumber(t, "Public records");
+  const hardFromSummary = parseHardInquiryCountFromReport(t);
   const inquiries2Years =
+    hardFromSummary.displayMax ??
     parseLabelNumber(t, "Inquiries \\(2 years\\)") ??
     parseLabelNumber(t, "Inquiries \\(2 year") ??
     parseLabelNumber(t, "Inquiries 2 years") ??
-    parseLabelNumber(t, "Inquiries");
+    null;
 
   let payments: string | null = null;
   const paymentsMatch = t.match(/(?:Payments?|Payment history)\s*[:\s]*([^\n\r]+?)(?=\n|$)/i);

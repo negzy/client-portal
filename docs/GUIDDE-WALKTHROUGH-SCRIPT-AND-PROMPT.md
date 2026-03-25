@@ -32,8 +32,27 @@ Copy everything below the line into your tool.
 
 **4. Credit Import**
 - Page title: "Import your credit report."
-- If they already have a report/audit: "Your latest report" card with date, scores (e.g. EX: 620, EQ: 615, TU: 618), and negative items count. Buttons: "View audit" and "Download audit PDF."
-- Below: "Upload a new report" — Manual upload (PDF or screenshot), optional score fields (Experian, Equifax, TransUnion), "Upload and analyze." Or switch to provider import (MyFreeScoreNow, etc.).
+- If they already have a report/audit: "Your latest report" card with date, scores (e.g. EX: 620, EQ: 615, TU: 618), negative items count, and **Late payments (parsed)** count. Below that, a **Late payment list (verify)** table (see "Late payment list — what to show" below). Buttons: "View audit" and "Download audit PDF."
+- On **View audit** (`/dashboard/audits/[id]`): same **Late payments (parsed)** table so clients can verify without returning to Credit Import.
+- Below: "Upload a new report" / **Upload report (PDF)** — credit report **PDF only** (no screenshot upload, no manual score entry). Button: "Upload and analyze." Optional: "Connect monitoring" flow to save provider credentials (automation depends on backend).
+
+**Late payment list — what to show (for narration / verification)**
+
+Use this so the guide explicitly calls out the parsed late-payment rows (from each account’s **30 / 60 / 90 / 120 Days Past Due** table in the PDF, Equifax / Experian / TransUnion columns when the count is greater than zero).
+
+| Column | What it shows |
+| ------ | --------------- |
+| **Account** | Creditor / tradeline name from that account section in the report. |
+| **Bureau** | Equifax, Experian, or TransUnion — whichever column had a count > 0 for that severity row. |
+| **Severity** | One of **Late 30**, **Late 60**, **Late 90**, or **Late 120** (matches the “Days Past Due” row). |
+| **Detail** | Text like `Late 30 (report count: N)` — **N** is the number read from the PDF for that bureau. |
+
+**Example lines (illustrative — not real data):**
+
+- Account: **CAP ONE AUTO FIN** · Bureau: **Experian** · Severity: **Late 30** · Detail: **Late 30 (report count: 1)**
+- Account: **DISCOVER CARD** · Bureau: **TransUnion** · Severity: **Late 60** · Detail: **Late 60 (report count: 2)**
+
+If the PDF has no qualifying past-due counts, the table is empty and copy explains that no structured late-payment rows were parsed.
 
 **5. Document Vault**
 - "Document vault" — Upload and view ID, utility bills, credit reports, etc. Upload control and a list of existing documents with category labels (ID, Utility bill, Credit report, etc.). Download or remove per document.
@@ -115,8 +134,8 @@ Use this when recording or when your AI needs exact copy for each step.
 
 ### Scene 9 — Credit Import
 **Screen:** Credit Import page.  
-**Say:** "Under Credit Import you’ll see your latest report if you’ve already uploaded one — with scores, negative items count, and a link to view or download the audit. Below that you can upload a new report: choose a PDF or screenshot, optionally enter your three bureau scores, and click Upload and analyze. You can also switch to provider import if you use a monitoring service."  
-**Do:** Show "Your latest report" card if present; show manual upload form and optional score fields.
+**Say:** "Under Credit Import you’ll see your latest report if you’ve already uploaded one — scores, total negative items, how many late-payment rows we parsed, and a **Late payment list** you can check against your PDF. Each line shows the account name, bureau, late severity — Late 30 through Late 120 — and the count we read from the report. Open **View audit** for the same list on the audit page. Below that, upload a **PDF only** of your full 3-bureau report and click Upload and analyze — no manual scores or screenshots here. You can also use Connect monitoring to save provider login details if your program uses that."  
+**Do:** Show "Your latest report" card, scroll the late-payment table, open View audit briefly; show PDF upload and optional provider connect.
 
 ---
 
@@ -143,7 +162,7 @@ Use this when recording or when your AI needs exact copy for each step.
 
 ## One-paragraph summary for AI tools
 
-**CreditLyft Portal client flow:** New users register or log in and are sent to a 6-step onboarding (dark theme, orange CTAs): (1) Welcome → Start Onboarding, (2) Get Credit Monitoring with optional inline PDF upload or "I'll do it later," (3) Portal tour, (4) Upload details with inline uploads for Photo ID, proof of address, SSN, (5) What happens next, (6) Support and "Go to my dashboard." After that they land on the dashboard with a sidebar (Take the tour, Credit Import, Document Vault, Tasks, Progress, Messages, Profile, etc.). Credit Import shows the latest report and scores when available and lets them upload a new PDF; Document Vault holds ID and other docs. Tasks, Progress, and Messages complete the experience. The in-app "Take the tour" modal walks through each area.
+**CreditLyft Portal client flow:** New users register or log in and are sent to a 6-step onboarding (dark theme, orange CTAs): (1) Welcome → Start Onboarding, (2) Get Credit Monitoring with optional inline PDF upload or "I'll do it later," (3) Portal tour, (4) Upload details with inline uploads for Photo ID, proof of address, SSN, (5) What happens next, (6) Support and "Go to my dashboard." After that they land on the dashboard with a sidebar (Take the tour, Credit Import, Document Vault, Tasks, Progress, Messages, Profile, etc.). Credit Import shows the latest report and scores when available, a **late payment verification table** (Account, Bureau, Late 30/60/90/120, detail with report count), and PDF-only re-upload (plus optional monitoring credentials). Document Vault holds ID and other docs. Tasks, Progress, and Messages complete the experience. The in-app "Take the tour" modal walks through each area.
 
 ---
 

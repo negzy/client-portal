@@ -1,11 +1,26 @@
 import { BUREAUS } from "@/lib/constants";
+import { AdminClientCreditTools } from "@/components/admin/AdminClientCreditTools";
 
 type ScoreRow = { bureau: string; score: number; previousScore: number | null; recordedAt: Date };
+
+type NegRow = {
+  id: string;
+  accountName: string;
+  bureau: string;
+  accountType: string | null;
+  balance: unknown;
+  negativeReason: string | null;
+};
 
 export function ClientTabScores({
   profile,
 }: {
-  profile: { user: { name: string | null; email: string }; scoreHistory: ScoreRow[] };
+  profile: {
+    id: string;
+    user: { name: string | null; email: string };
+    scoreHistory: ScoreRow[];
+    negativeItems: NegRow[];
+  };
 }) {
   const byBureau = BUREAUS.map((b) => {
     const latest = profile.scoreHistory.find((r) => r.bureau === b);
@@ -42,6 +57,8 @@ export function ClientTabScores({
           </ul>
         )}
       </div>
+
+      <AdminClientCreditTools clientProfileId={profile.id} negativeItems={profile.negativeItems} />
     </div>
   );
 }

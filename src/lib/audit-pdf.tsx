@@ -23,6 +23,10 @@ const COL_ACCOUNT = 130;
 const COL_TYPE = 58;
 const COL_BUREAU = 42;
 const COL_DETAILS = 160;
+// Late-payment matrix (page 4): aligns with derogatory table width ~474pt
+const LM_COL_ACCOUNT = 128;
+const LM_COL_SEV = 66;
+const LM_COL_TOTAL = 40;
 
 const styles = StyleSheet.create({
   page: {
@@ -401,6 +405,78 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     textAlign: "center",
   },
+  lateMatrixBlock: {
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  lateMatrixTitle: {
+    fontSize: 10,
+    fontWeight: "bold",
+    color: "#1e293b",
+    paddingHorizontal: 10,
+    paddingTop: 10,
+    paddingBottom: 4,
+    backgroundColor: "#f8fafc",
+  },
+  lateMatrixSub: {
+    fontSize: 7,
+    color: "#64748b",
+    lineHeight: 1.45,
+    paddingHorizontal: 10,
+    paddingBottom: 8,
+    backgroundColor: "#f8fafc",
+  },
+  lateMatrixHead: {
+    flexDirection: "row",
+    backgroundColor: "#475569",
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+  },
+  lateMatrixHeadCell: {
+    fontSize: 7,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+  lateMatrixRow: {
+    flexDirection: "row",
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+    backgroundColor: "#ffffff",
+  },
+  lateMatrixRowAlt: {
+    flexDirection: "row",
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+    backgroundColor: "#f8fafc",
+  },
+  lateMatrixCell: {
+    fontSize: 7,
+    color: "#334155",
+  },
+  lateMatrixCellStrong: {
+    fontSize: 7,
+    fontWeight: "bold",
+    color: "#b45309",
+  },
+  lateMatrixFoot: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    backgroundColor: "#e2e8f0",
+  },
+  lateMatrixFootText: {
+    fontSize: 8,
+    fontWeight: "bold",
+    color: "#1e293b",
+  },
   tableHeader: {
     flexDirection: "row",
     backgroundColor: "#1e3a5f",
@@ -496,6 +572,24 @@ type AuditPdfProps = {
   recommendedSteps: string;
   capitalReadinessNotes: string;
   negativeItems?: AuditNegativeItem[];
+  /** Parsed from report: Equifax / Experian / TransUnion factor bullets */
+  factorsAffecting?: {
+    equifax: string[];
+    experian: string[];
+    transUnion: string[];
+  };
+  /** Past-due counts by account (30/60/90/120); empty rows omitted from PDF */
+  latePaymentMatrix?: {
+    rows: Array<{
+      accountName: string;
+      cell30: string;
+      cell60: string;
+      cell90: string;
+      cell120: string;
+      rowTotal: number;
+    }>;
+    grandTotal: number;
+  };
   /** Optional absolute path to cover image (e.g. public/audit-assets/auditsccc.png) for page 1 */
   coverImagePath?: string;
   /** Optional absolute path to logo image (e.g. public/audit-assets/logo.png) for cover and CTA */
@@ -622,6 +716,36 @@ function AuditDocument(props: AuditPdfProps) {
             35% Payment History{"\n"}30% Amount Owed{"\n"}15% Credit History{"\n"}10% Types of Credit{"\n"}10% Applying for Credit
           </Text>
         </View>
+
+        {props.factorsAffecting &&
+        (props.factorsAffecting.equifax.length > 0 ||
+          props.factorsAffecting.experian.length > 0 ||
+          props.factorsAffecting.transUnion.length > 0) ? (
+          <View style={[styles.eduBox, { marginTop: 10 }]}>
+            <Text style={styles.eduBoxTitle}>Factors affecting your credit score (from your report)</Text>
+            <Text style={[styles.bureauSectionTitle, { fontSize: 11, marginTop: 4 }]}>Equifax</Text>
+            {props.factorsAffecting.equifax.map((line, i) => (
+              <View key={`fac-eq-${i}`} style={styles.eduBullet}>
+                <Text style={styles.eduCheck}>•</Text>
+                <Text>{line}</Text>
+              </View>
+            ))}
+            <Text style={[styles.bureauSectionTitle, { fontSize: 11, marginTop: 8 }]}>Experian</Text>
+            {props.factorsAffecting.experian.map((line, i) => (
+              <View key={`fac-ex-${i}`} style={styles.eduBullet}>
+                <Text style={styles.eduCheck}>•</Text>
+                <Text>{line}</Text>
+              </View>
+            ))}
+            <Text style={[styles.bureauSectionTitle, { fontSize: 11, marginTop: 8 }]}>TransUnion</Text>
+            {props.factorsAffecting.transUnion.map((line, i) => (
+              <View key={`fac-tu-${i}`} style={styles.eduBullet}>
+                <Text style={styles.eduCheck}>•</Text>
+                <Text>{line}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
 
         <Footer page={2} />
       </Page>
@@ -787,6 +911,40 @@ function AuditDocument(props: AuditPdfProps) {
           Late payments, Collections, and other derogatory items within the last 6 months will hurt your credit score more so than older in-active accounts.
         </Text>
 
+        {props.latePaymentMatrix && props.latePaymentMatrix.rows.length > 0 ? (
+          <View style={styles.lateMatrixBlock}>
+            <Text style={styles.lateMatrixTitle}>Late payment summary (from your report)</Text>
+            <Text style={styles.lateMatrixSub}>
+              Numbers come from each account&apos;s 30 / 60 / 90 / 120 days past due rows (Equifax, Experian,
+              TransUnion). Each cell lists bureaus with a count greater than zero (for example EX:6 means six on
+              Experian for that severity). Row Σ is the sum of those counts for that account.
+            </Text>
+            <View style={styles.lateMatrixHead}>
+              <Text style={[styles.lateMatrixHeadCell, { width: LM_COL_ACCOUNT }]}>Account</Text>
+              <Text style={[styles.lateMatrixHeadCell, { width: LM_COL_SEV, textAlign: "center" }]}>30 d</Text>
+              <Text style={[styles.lateMatrixHeadCell, { width: LM_COL_SEV, textAlign: "center" }]}>60 d</Text>
+              <Text style={[styles.lateMatrixHeadCell, { width: LM_COL_SEV, textAlign: "center" }]}>90 d</Text>
+              <Text style={[styles.lateMatrixHeadCell, { width: LM_COL_SEV, textAlign: "center" }]}>120 d</Text>
+              <Text style={[styles.lateMatrixHeadCell, { width: LM_COL_TOTAL, textAlign: "right" }]}>Σ</Text>
+            </View>
+            {props.latePaymentMatrix.rows.map((row, i) => (
+              <View key={`lm-${row.accountName}-${i}`} style={i % 2 === 0 ? styles.lateMatrixRow : styles.lateMatrixRowAlt}>
+                <Text style={[styles.lateMatrixCell, { width: LM_COL_ACCOUNT, paddingRight: 4 }]}>{row.accountName}</Text>
+                <Text style={[styles.lateMatrixCell, { width: LM_COL_SEV, textAlign: "center" }]}>{row.cell30}</Text>
+                <Text style={[styles.lateMatrixCell, { width: LM_COL_SEV, textAlign: "center" }]}>{row.cell60}</Text>
+                <Text style={[styles.lateMatrixCell, { width: LM_COL_SEV, textAlign: "center" }]}>{row.cell90}</Text>
+                <Text style={[styles.lateMatrixCell, { width: LM_COL_SEV, textAlign: "center" }]}>{row.cell120}</Text>
+                <Text style={[styles.lateMatrixCellStrong, { width: LM_COL_TOTAL, textAlign: "right" }]}>{row.rowTotal}</Text>
+              </View>
+            ))}
+            <View style={styles.lateMatrixFoot}>
+              <Text style={styles.lateMatrixFootText}>
+                Total (all accounts): {props.latePaymentMatrix.grandTotal}
+              </Text>
+            </View>
+          </View>
+        ) : null}
+
         {items.length > 0 ? (
           <View style={{ marginTop: 8 }}>
             <View style={styles.tableHeader}>
@@ -892,6 +1050,8 @@ export async function generateAuditPdfBuffer(props: AuditPdfProps): Promise<Buff
       recommendedSteps={props.recommendedSteps}
       capitalReadinessNotes={props.capitalReadinessNotes}
       negativeItems={props.negativeItems}
+      factorsAffecting={props.factorsAffecting}
+      latePaymentMatrix={props.latePaymentMatrix}
       coverImagePath={props.coverImagePath ?? assets.coverImagePath}
       logoPath={props.logoPath ?? assets.logoPath}
       envelopeIconPath={props.envelopeIconPath ?? assets.envelopeIconPath}

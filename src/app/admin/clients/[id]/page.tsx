@@ -31,7 +31,13 @@ export default async function AdminClientDetailPage({
       user: { select: { name: true, email: true } },
       negativeItems: true,
       disputeRounds: { include: { items: true }, orderBy: { dateCreated: "desc" } },
-      tasks: { include: { assignedBy: { select: { name: true } }, assignedTo: { select: { name: true } } }, orderBy: { dueDate: "asc" } },
+      tasks: {
+        include: {
+          assignedBy: { select: { name: true } },
+          assignedTo: { select: { id: true, name: true, email: true } },
+        },
+        orderBy: { dueDate: "asc" },
+      },
       applications: true,
       audits: { orderBy: { auditDate: "desc" }, take: 10 },
       documents: true,
@@ -41,6 +47,12 @@ export default async function AdminClientDetailPage({
     },
   });
   if (!profile) notFound();
+
+  const assignees = await prisma.user.findMany({
+    where: { OR: [{ role: "ADMIN" }, { id: profile.userId }] },
+    select: { id: true, name: true, email: true, role: true },
+    orderBy: [{ role: "asc" }, { email: "asc" }],
+  });
 
   const bureauCounts = profile.negativeItems.reduce(
     (acc, i) => {
@@ -66,7 +78,7 @@ export default async function AdminClientDetailPage({
         {activeTab === "scores" && <ClientTabScores profile={profile} />}
         {activeTab === "disputes" && <ClientTabDisputes profile={profile} />}
         {activeTab === "billing" && <ClientTabBilling profile={profile} />}
-        {activeTab === "notes" && <ClientTabNotes profile={profile} />}
+        {activeTab === "notes" && <ClientTabNotes profile={{ ...profile, assignees }} />}
         {activeTab === "communications" && <ClientTabCommunications profile={profile} />}
       </ClientTabs>
     </div>

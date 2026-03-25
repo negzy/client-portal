@@ -11,6 +11,25 @@ export default async function ProfilePage() {
 
   const profile = await prisma.clientProfile.findUnique({
     where: { userId: session.user.id },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      phone: true,
+      address: true,
+      city: true,
+      state: true,
+      zip: true,
+      dateOfBirth: true,
+      businessName: true,
+      businessEntityType: true,
+      llcState: true,
+      ein: true,
+      preferredContactMethod: true,
+      creditMonitoringEmail: true,
+      creditMonitoringUsername: true,
+      creditMonitoringNotes: true,
+    },
   });
   if (!profile) redirect("/dashboard");
 
@@ -49,6 +68,9 @@ export default async function ProfilePage() {
           llcState: profile?.llcState ?? "",
           ein: profile?.ein ?? "",
           preferredContactMethod: profile?.preferredContactMethod ?? "",
+          creditMonitoringEmail: profile?.creditMonitoringEmail ?? "",
+          creditMonitoringUsername: profile?.creditMonitoringUsername ?? "",
+          creditMonitoringNotes: profile?.creditMonitoringNotes ?? "",
         }}
       />
 

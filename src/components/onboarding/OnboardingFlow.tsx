@@ -59,11 +59,42 @@ export function OnboardingFlow({ reviewMode = false }: { reviewMode?: boolean })
   const [documentByCategory, setDocumentByCategory] = useState<Record<string, boolean>>({});
   const [uploadingCategory, setUploadingCategory] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState("");
+  const [cmEmail, setCmEmail] = useState("");
+  const [cmUser, setCmUser] = useState("");
+  const [cmNotes, setCmNotes] = useState("");
+  const [cmSaving, setCmSaving] = useState(false);
+  const [cmSaved, setCmSaved] = useState(false);
+  const [cmError, setCmError] = useState("");
   const reportInputRef = useRef<HTMLInputElement>(null);
   const docInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     setUploadError("");
+  }, [step]);
+
+  useEffect(() => {
+    if (step !== 2) return;
+    let cancelled = false;
+    fetch("/api/profile")
+      .then((r) => (r.ok ? r.json() : null))
+      .then(
+        (
+          data: {
+            creditMonitoringEmail?: string | null;
+            creditMonitoringUsername?: string | null;
+            creditMonitoringNotes?: string | null;
+          } | null
+        ) => {
+          if (cancelled || !data) return;
+          setCmEmail(data.creditMonitoringEmail ?? "");
+          setCmUser(data.creditMonitoringUsername ?? "");
+          setCmNotes(data.creditMonitoringNotes ?? "");
+        }
+      )
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, [step]);
 
   useEffect(() => {
@@ -89,6 +120,31 @@ export function OnboardingFlow({ reviewMode = false }: { reviewMode?: boolean })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [step]);
+
+  async function saveCreditMonitoringToProfile() {
+    setCmError("");
+    setCmSaved(false);
+    setCmSaving(true);
+    try {
+      const res = await fetch("/api/profile/credit-monitoring", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          creditMonitoringEmail: cmEmail.trim() || null,
+          creditMonitoringUsername: cmUser.trim() || null,
+          creditMonitoringNotes: cmNotes.trim() || null,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCmError(data.error ?? "Could not save");
+        return;
+      }
+      setCmSaved(true);
+    } finally {
+      setCmSaving(false);
+    }
+  }
 
   async function uploadCreditReport(file: File) {
     setUploadError("");
@@ -317,6 +373,46 @@ export function OnboardingFlow({ reviewMode = false }: { reviewMode?: boolean })
                     {uploadError && (
                       <p className="mt-3 text-sm text-red-400">{uploadError}</p>
                     )}
+                  </div>
+                  <div className="mt-6 rounded-lg border border-zinc-600 bg-zinc-700/50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                      Save monitoring details to your profile
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-300">
+                      Optional: add the email or username you use for credit monitoring so we have it on file before business setup. You can also update this anytime under Profile.
+                    </p>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      <input
+                        type="email"
+                        value={cmEmail}
+                        onChange={(e) => setCmEmail(e.target.value)}
+                        placeholder="Monitoring login email"
+                        className="rounded-lg border border-zinc-500 bg-zinc-800 px-3 py-2 text-sm text-white placeholder-zinc-500"
+                      />
+                      <input
+                        value={cmUser}
+                        onChange={(e) => setCmUser(e.target.value)}
+                        placeholder="Username / member ID"
+                        className="rounded-lg border border-zinc-500 bg-zinc-800 px-3 py-2 text-sm text-white placeholder-zinc-500"
+                      />
+                      <textarea
+                        value={cmNotes}
+                        onChange={(e) => setCmNotes(e.target.value)}
+                        placeholder="Notes (no passwords — use secure methods for those)"
+                        rows={2}
+                        className="sm:col-span-2 rounded-lg border border-zinc-500 bg-zinc-800 px-3 py-2 text-sm text-white placeholder-zinc-500"
+                      />
+                    </div>
+                    {cmError && <p className="mt-2 text-sm text-red-400">{cmError}</p>}
+                    {cmSaved && <p className="mt-2 text-sm text-emerald-400">Saved to your profile.</p>}
+                    <button
+                      type="button"
+                      disabled={cmSaving}
+                      onClick={saveCreditMonitoringToProfile}
+                      className="mt-3 rounded-lg bg-zinc-600 px-4 py-2 text-sm font-medium text-zinc-100 hover:bg-zinc-500 disabled:opacity-70"
+                    >
+                      {cmSaving ? "Saving…" : "Save to profile"}
+                    </button>
                   </div>
                   <div className="mt-6 rounded-lg border border-zinc-600 bg-zinc-700/50 p-4">
                     <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Quick checklist</p>

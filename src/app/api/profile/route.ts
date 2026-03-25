@@ -20,7 +20,30 @@ const schema = z.object({
   llcState: z.string().optional(),
   ein: z.string().optional(),
   preferredContactMethod: z.string().optional(),
+  creditMonitoringEmail: z.string().optional().nullable(),
+  creditMonitoringUsername: z.string().optional().nullable(),
+  creditMonitoringNotes: z.string().optional().nullable(),
 });
+
+export async function GET() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const profile = await prisma.clientProfile.findUnique({
+    where: { userId: session.user.id },
+    select: {
+      id: true,
+      creditMonitoringEmail: true,
+      creditMonitoringUsername: true,
+      creditMonitoringNotes: true,
+    },
+  });
+  if (!profile) {
+    return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+  }
+  return NextResponse.json(profile);
+}
 
 export async function PATCH(req: Request) {
   const session = await getServerSession(authOptions);
@@ -66,6 +89,12 @@ export async function PATCH(req: Request) {
   if (body.ein !== undefined) updateData.ein = body.ein;
   if (body.preferredContactMethod !== undefined)
     updateData.preferredContactMethod = body.preferredContactMethod;
+  if (body.creditMonitoringEmail !== undefined)
+    updateData.creditMonitoringEmail = body.creditMonitoringEmail;
+  if (body.creditMonitoringUsername !== undefined)
+    updateData.creditMonitoringUsername = body.creditMonitoringUsername;
+  if (body.creditMonitoringNotes !== undefined)
+    updateData.creditMonitoringNotes = body.creditMonitoringNotes;
 
   await prisma.clientProfile.update({
     where: { id: body.clientProfileId },
