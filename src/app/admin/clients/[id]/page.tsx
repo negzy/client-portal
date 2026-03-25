@@ -12,6 +12,7 @@ import { ClientTabBilling } from "@/components/admin/ClientTabBilling";
 import { ClientTabNotes } from "@/components/admin/ClientTabNotes";
 import { ClientTabCommunications } from "@/components/admin/ClientTabCommunications";
 import { BUREAUS } from "@/lib/constants";
+import { toClientSafeNegativeItems } from "@/lib/prisma-client-serialize";
 
 export default async function AdminClientDetailPage({
   params,
@@ -48,6 +49,11 @@ export default async function AdminClientDetailPage({
   });
   if (!profile) notFound();
 
+  const profileForTabs = {
+    ...profile,
+    negativeItems: toClientSafeNegativeItems(profile.negativeItems),
+  };
+
   const assignees = await prisma.user.findMany({
     where: { OR: [{ role: "ADMIN" }, { id: profile.userId }] },
     select: { id: true, name: true, email: true, role: true },
@@ -73,13 +79,13 @@ export default async function AdminClientDetailPage({
         ← Back to clients
       </Link>
       <ClientTabs clientId={id} activeTab={activeTab}>
-        {activeTab === "overview" && <ClientTabOverview profile={profile} bureau={bureau} />}
-        {activeTab === "documents" && <ClientTabDocuments profile={profile} />}
-        {activeTab === "scores" && <ClientTabScores profile={profile} />}
-        {activeTab === "disputes" && <ClientTabDisputes profile={profile} />}
-        {activeTab === "billing" && <ClientTabBilling profile={profile} />}
-        {activeTab === "notes" && <ClientTabNotes profile={{ ...profile, assignees }} />}
-        {activeTab === "communications" && <ClientTabCommunications profile={profile} />}
+        {activeTab === "overview" && <ClientTabOverview profile={profileForTabs} bureau={bureau} />}
+        {activeTab === "documents" && <ClientTabDocuments profile={profileForTabs} />}
+        {activeTab === "scores" && <ClientTabScores profile={profileForTabs} />}
+        {activeTab === "disputes" && <ClientTabDisputes profile={profileForTabs} />}
+        {activeTab === "billing" && <ClientTabBilling profile={profileForTabs} />}
+        {activeTab === "notes" && <ClientTabNotes profile={{ ...profileForTabs, assignees }} />}
+        {activeTab === "communications" && <ClientTabCommunications profile={profileForTabs} />}
       </ClientTabs>
     </div>
   );

@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LetterGenerator } from "@/components/admin/LetterGenerator";
+import { toClientSafeNegativeItems } from "@/lib/prisma-client-serialize";
 
 export default async function AdminLettersPage({
   searchParams,
@@ -16,7 +17,7 @@ export default async function AdminLettersPage({
     orderBy: { user: { name: "asc" } },
   });
 
-  const selectedClient = clientId
+  const selectedRaw = clientId
     ? await prisma.clientProfile.findUnique({
         where: { id: clientId },
         include: {
@@ -24,6 +25,13 @@ export default async function AdminLettersPage({
           negativeItems: true,
         },
       })
+    : null;
+
+  const selectedClient = selectedRaw
+    ? {
+        ...selectedRaw,
+        negativeItems: toClientSafeNegativeItems(selectedRaw.negativeItems),
+      }
     : null;
 
   return (
