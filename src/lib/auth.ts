@@ -20,19 +20,25 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
-        if (!user || !user.passwordHash) return null;
-        const valid = await compare(credentials.password, user.passwordHash);
-        if (!valid) return null;
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          image: user.image,
-        };
+        const email = credentials.email.trim().toLowerCase();
+        try {
+          const user = await prisma.user.findUnique({
+            where: { email },
+          });
+          if (!user || !user.passwordHash) return null;
+          const valid = await compare(credentials.password, user.passwordHash);
+          if (!valid) return null;
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            image: user.image,
+          };
+        } catch (e) {
+          console.error("[auth] credentials authorize failed:", e);
+          return null;
+        }
       },
     }),
   ],

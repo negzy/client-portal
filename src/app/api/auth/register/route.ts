@@ -14,7 +14,9 @@ const schema = z.object({
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { email, password, name, role } = schema.parse(body);
+    const parsed = schema.parse(body);
+    const email = parsed.email.trim().toLowerCase();
+    const { password, name, role } = parsed;
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing)
