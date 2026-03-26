@@ -32,16 +32,19 @@ Web-based client portal and admin dashboard for credit repair and funding-readin
 
    Set:
 
-   - `DATABASE_URL` — PostgreSQL connection string
+   - `DATABASE_URL` — PostgreSQL URL (pooled / primary)
+   - `DATABASE_URL_UNPOOLED` — direct Postgres URL (for Prisma CLI; use the same value as `DATABASE_URL` on local Docker/host)
    - `NEXTAUTH_SECRET` — random string (e.g. `openssl rand -base64 32`)
    - `NEXTAUTH_URL` — e.g. `http://localhost:3000`
+
+   On Vercel + [Neon](https://vercel.com/marketplace/neon), both are injected when you connect Storage to the project (`vercel env pull .env.local`).
 
 2. **Database**
 
    ```bash
    npm install
-   npx prisma db push
-   npx prisma generate
+   npm run db:push
+   npm run db:generate
    npm run db:seed
    ```
 

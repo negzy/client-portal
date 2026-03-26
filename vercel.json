@@ -1,5 +1,5 @@
 {
-  "buildCommand": "prisma generate && next build",
+  "buildCommand": "node scripts/run-production-build.cjs",
   "framework": "nextjs",
   "installCommand": "npm install"
 }
