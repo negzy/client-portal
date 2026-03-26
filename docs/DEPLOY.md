@@ -14,7 +14,7 @@
 
    | Variable | Required | Notes |
    |----------|----------|--------|
-   | `DATABASE_URL` | Yes | Use **connection pooling** URL for serverless (e.g. Supabase: Database → Connection string → **Transaction** pooler, port 6543, add `?pgbouncer=true` at the end). |
+   | `DATABASE_URL` | Yes | Use Supabase **Transaction pooler** only on Vercel (port **6543**, not Session, not direct 5432). See **Supabase `DATABASE_URL` checklist** below. |
    | `NEXTAUTH_SECRET` | Yes | Generate: `openssl rand -base64 32` |
    | `NEXTAUTH_URL` | Yes | Your production URL, e.g. `https://your-app.vercel.app` |
 
@@ -25,6 +25,25 @@
    - `TWILIO_*` — SMS
    - `NEXT_PUBLIC_CREDIT_MONITORING_URL` — “Get Credit Monitoring” link
    - `STRIPE_*` — billing
+
+### Supabase `DATABASE_URL` checklist (Vercel / serverless)
+
+Use this so Prisma can connect and you avoid pool exhaustion (“max clients”) and invalid URL errors.
+
+- In Supabase open your project → **Connect** (or **Project Settings → Database**).
+- Under connection strings, choose **Transaction pooler** (sometimes labeled **Transaction mode** / port **6543**).
+  - Do **not** use **Session pooler** for Vercel (small serverless connection cap → `MaxClientsInSessionMode`).
+  - Do **not** use the **direct** `db.xxx.supabase.co:5432` URL as `DATABASE_URL` on Vercel (too many real DB connections).
+- Copy the **URI** Supabase shows **exactly** (user, host, port, database name). It should include **`6543`** and usually ends with something like `?pgbouncer=true` (keep that).
+- **Password:** if it contains `@ : / ? # & % +` or spaces, run  
+  `node -e "console.log(encodeURIComponent('YOUR_DB_PASSWORD'))"`  
+  and replace the password segment in the URI with the encoded value only.
+- In Vercel → **Environment variables** → `DATABASE_URL`: paste **one line**, **no** wrapping `"` quotes, no trailing spaces or line breaks.
+- **Redeploy** production after saving env (Deployments → … → Redeploy).
+
+**Username / host:** Supabase often shows `postgres.[project-ref]` and a **pooler** host (e.g. `aws-0-....pooler.supabase.com`) or `db.[ref].supabase.co:6543`. Use **their** string—do not mix a Session URI with a Transaction port.
+
+**Migrations:** Run `prisma migrate deploy` from your machine (or CI) using the **direct** connection string (port **5432**) when you need migrations; keep Vercel’s `DATABASE_URL` as the **transaction** pooler for the running app.
 
 4. **Database migrations**
 
