@@ -20,10 +20,13 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-        const email = credentials.email.trim().toLowerCase();
+        const emailRaw = credentials.email.trim();
         try {
-          const user = await prisma.user.findUnique({
-            where: { email },
+          // Case-insensitive: existing rows may be "Jane@Email.com" while login types "jane@email.com"
+          const user = await prisma.user.findFirst({
+            where: {
+              email: { equals: emailRaw, mode: "insensitive" },
+            },
           });
           if (!user || !user.passwordHash) return null;
           const valid = await compare(credentials.password, user.passwordHash);
