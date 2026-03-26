@@ -4,6 +4,9 @@
  *   DATABASE_URL="postgresql://..." npx tsx scripts/normalize-user-emails.ts
  */
 import { PrismaClient } from "@prisma/client";
+import { sanitizeDatabaseUrlEnv } from "../src/lib/sanitize-database-url";
+
+sanitizeDatabaseUrlEnv();
 
 const prisma = new PrismaClient();
 

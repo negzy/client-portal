@@ -1,5 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 import { hash } from "bcryptjs";
+import { sanitizeDatabaseUrlEnv } from "../src/lib/sanitize-database-url";
+
+sanitizeDatabaseUrlEnv();
 
 const prisma = new PrismaClient();
 

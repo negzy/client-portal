@@ -1,4 +1,7 @@
 import { PrismaClient } from "@prisma/client";
+import { sanitizeDatabaseUrlEnv } from "./sanitize-database-url";
+
+sanitizeDatabaseUrlEnv();
 
 /**
  * One PrismaClient per serverless instance (Vercel lambda warm container).

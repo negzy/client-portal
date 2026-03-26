@@ -6,7 +6,10 @@
  *   DATABASE_URL="postgresql://..." npx tsx scripts/verify-db-users.ts client@example.com
  */
 import { PrismaClient } from "@prisma/client";
+import { sanitizeDatabaseUrlEnv } from "../src/lib/sanitize-database-url";
 import { normalizeUserEmail } from "../src/lib/user-email";
+
+sanitizeDatabaseUrlEnv();
 
 const prisma = new PrismaClient();
 
