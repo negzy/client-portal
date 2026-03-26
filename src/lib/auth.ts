@@ -2,6 +2,7 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "./prisma";
+import { normalizeUserEmail } from "./user-email";
 import { compare } from "bcryptjs";
 import type { Role } from "@prisma/client";
 
@@ -20,15 +21,41 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
+        const emailNorm = normalizeUserEmail(credentials.email);
         const emailRaw = credentials.email.trim();
         try {
-          // Case-insensitive: existing rows may be "Jane@Email.com" while login types "jane@email.com"
-          const user = await prisma.user.findFirst({
-            where: {
-              email: { equals: emailRaw, mode: "insensitive" },
-            },
-          });
-          if (!user || !user.passwordHash) return null;
+          // Primary: normalized address (all new signups + lead conversions use this).
+          let user = await prisma.user.findUnique({ where: { email: emailNorm } });
+
+          // Legacy rows created before normalization (mixed case / odd spacing).
+          if (!user) {
+            user =
+              (await prisma.user.findUnique({ where: { email: emailRaw } })) ??
+              (await prisma.user.findFirst({
+                where: { email: { equals: emailRaw, mode: "insensitive" } },
+              }));
+          }
+
+          if (!user) {
+            const rows = await prisma.$queryRaw<{ id: string }[]>`
+              SELECT id FROM "User"
+              WHERE LOWER(TRIM(email)) = LOWER(TRIM(${emailNorm}))
+              LIMIT 1
+            `;
+            if (rows[0]) {
+              user = await prisma.user.findUnique({ where: { id: rows[0].id } });
+            }
+          }
+
+          if (!user || !user.passwordHash) {
+            if (process.env.LOGIN_DEBUG === "true") {
+              console.warn("[auth] no user or missing passwordHash", {
+                email: emailNorm,
+                userFound: !!user,
+              });
+            }
+            return null;
+          }
           const valid = await compare(credentials.password, user.passwordHash);
           if (!valid) return null;
           return {

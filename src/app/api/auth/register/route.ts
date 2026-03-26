@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { normalizeUserEmail } from "@/lib/user-email";
 import { hash } from "bcryptjs";
 import { z } from "zod";
 import type { Role } from "@prisma/client";
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const parsed = schema.parse(body);
-    const email = parsed.email.trim().toLowerCase();
+    const email = normalizeUserEmail(parsed.email);
     const { password, name, role } = parsed;
 
     const existing = await prisma.user.findUnique({ where: { email } });

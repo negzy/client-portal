@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { normalizeUserEmail } from "@/lib/user-email";
 import { hash } from "bcryptjs";
 import { z } from "zod";
 import type { Role } from "@prisma/client";
@@ -32,9 +33,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Lead already converted" }, { status: 400 });
     }
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email: contact.email },
-    });
+    const email = normalizeUserEmail(contact.email);
+    const existingUser =
+      (await prisma.user.findUnique({ where: { email } })) ??
+      (await prisma.user.findFirst({
+        where: { email: { equals: contact.email.trim(), mode: "insensitive" } },
+      }));
     if (existingUser) {
       return NextResponse.json(
         { error: "A user with this email already exists" },
@@ -45,7 +49,7 @@ export async function POST(req: Request) {
     const passwordHash = await hash(password, 12);
     const user = await prisma.user.create({
       data: {
-        email: contact.email,
+        email,
         passwordHash,
         name: contact.fullName,
         role: "CLIENT" as Role,

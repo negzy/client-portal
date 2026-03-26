@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { normalizeUserEmail } from "@/lib/user-email";
 import { z } from "zod";
 
 const schema = z.object({
@@ -102,9 +103,19 @@ export async function PATCH(req: Request) {
   });
 
   if (body.email !== undefined && (isAdmin || profile.userId === session.user.id)) {
+    const nextEmail = normalizeUserEmail(body.email);
+    const taken = await prisma.user.findFirst({
+      where: { email: nextEmail, NOT: { id: profile.userId } },
+    });
+    if (taken) {
+      return NextResponse.json(
+        { error: "That email is already in use" },
+        { status: 400 }
+      );
+    }
     await prisma.user.update({
       where: { id: profile.userId },
-      data: { email: body.email },
+      data: { email: nextEmail },
     });
   }
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { normalizeUserEmail } from "@/lib/user-email";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -20,9 +21,10 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const data = createSchema.parse(body);
+    const email = normalizeUserEmail(data.email);
 
     const existing = await prisma.contact.findFirst({
-      where: { email: data.email },
+      where: { email: { equals: email, mode: "insensitive" } },
     });
     if (existing) {
       return NextResponse.json(
@@ -42,7 +44,7 @@ export async function POST(req: Request) {
     const contact = await prisma.contact.create({
       data: {
         fullName: data.fullName,
-        email: data.email,
+        email,
         phone: data.phone ?? null,
         state: data.state ?? null,
         businessName: data.businessName ?? null,
