@@ -29,7 +29,10 @@ export default function LeadCapturePage() {
         return;
       }
       setStatus("success");
-      setMessage(data.message ?? "Thanks! We'll be in touch.");
+      setMessage(
+        data.message ??
+          "Thanks! We will send your audit report by text and email, with a link to book a call to review it."
+      );
       setForm({ fullName: "", email: "", phone: "" });
     } catch {
       setStatus("error");
@@ -42,7 +45,8 @@ export default function LeadCapturePage() {
       <div className="w-full max-w-md rounded-xl border border-white/10 bg-white/5 p-8">
         <h1 className="text-2xl font-bold">Get in touch</h1>
         <p className="mt-2 text-slate-400 text-sm">
-          Leave your details and we&apos;ll reach out about credit repair and funding readiness.
+          Leave your details and we&apos;ll send your audit report by text and email. You&apos;ll also get a
+          link to book a call so we can review it together.
         </p>
         {status === "success" && (
           <p className="mt-4 rounded-lg bg-emerald-500/20 p-3 text-sm text-emerald-300">

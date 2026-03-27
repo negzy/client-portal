@@ -447,7 +447,7 @@ export function parseNegativeItemsFromReport(text: string): ParsedNegativeItem[]
 
   // Blocklist: never use these as account name (score partners, product names, headers)
   const NOT_ACCOUNT_NAME =
-    /vantage\s*score|credit\s*score\s*partner|powered\s+by|three\s+bureau\s+credit\s+report|page\s+\d+\s+of\s+\d+|partnered|\.0\s*credit|experian\s*score|equifax\s*score|transunion\s*score|fico|score\s*summary|your\s*score|report\s*date|account\s*number\s*:\s*\d|^\s*\d{4}\s*$/i;
+    /vantage\s*score|credit\s*score\s*partner|powered\s+by|three\s+bureau|credit\s*report|page\s+\d+\s+of\s+\d+|partnered|\.0\s*credit|experian\s*score|equifax\s*score|transunion\s*score|fico|score\s*summary|your\s*score|report\s*date|account\s*number\s*:\s*\d|^\s*\d{4}\s*$|^[A-Za-z]+\s+\d{1,2},\s+\d{4}\s+three\s+bureau/i;
 
   function looksLikeAccountName(s: string): boolean {
     const t = s.trim();
@@ -619,7 +619,8 @@ export function parseNegativeItemsFromReport(text: string): ParsedNegativeItem[]
 
   // If we found no items by line scan, try block scan: split by double newline and look for blocks containing negative keywords + bureau
   if (items.length === 0 && t.length > 200) {
-    const NOT_ACCOUNT = /vantage\s*score|credit\s*score\s*partner|partnered|\.0\s*credit/i;
+    const NOT_ACCOUNT =
+      /vantage\s*score|credit\s*score\s*partner|partnered|\.0\s*credit|three\s*bureau|credit\s*report|powered\s+by|^[A-Za-z]+\s+\d{1,2},\s+\d{4}\s+three\s+bureau/i;
     const blocks = t.split(/\n\s*\n+/);
     for (const block of blocks) {
       if (!negativeTypeRegex.test(block) && !/\bcollection\b/i.test(block)) continue;
