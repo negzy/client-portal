@@ -53,7 +53,7 @@ export function ClientTabOverview({
               <li key={item.id}>{item.accountName} · {item.bureau} · {item.currentOutcome ?? "—"}</li>
             ))}
           </ul>
-          <Link href={`/admin/clients/${profile.id}/disputes`} className="mt-4 inline-block text-orange-400 hover:underline">
+          <Link href={`/admin/clients/${profile.id}?tab=disputes`} className="mt-4 inline-block text-orange-400 hover:underline">
             Manage disputes →
           </Link>
         </section>

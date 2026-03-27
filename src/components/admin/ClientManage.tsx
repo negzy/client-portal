@@ -99,7 +99,7 @@ export function ClientManage({ profile }: { profile: Profile }) {
           ))}
         </ul>
         <Link
-          href={`/admin/clients/${profile.id}/disputes`}
+          href={`/admin/clients/${profile.id}?tab=disputes`}
           className="mt-2 inline-block text-brand-400 hover:underline"
         >
           Manage disputes →

@@ -8,9 +8,6 @@ export default function LeadCapturePage() {
     fullName: "",
     email: "",
     phone: "",
-    state: "",
-    businessName: "",
-    notes: "",
   });
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
@@ -33,7 +30,7 @@ export default function LeadCapturePage() {
       }
       setStatus("success");
       setMessage(data.message ?? "Thanks! We'll be in touch.");
-      setForm({ fullName: "", email: "", phone: "", state: "", businessName: "", notes: "" });
+      setForm({ fullName: "", email: "", phone: "" });
     } catch {
       setStatus("error");
       setMessage("Network error");
@@ -83,33 +80,6 @@ export default function LeadCapturePage() {
                 type="tel"
                 value={form.phone}
                 onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                className="mt-1 w-full rounded-lg border border-white/20 bg-black/50 px-3 py-2 text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-300">State</label>
-              <input
-                type="text"
-                value={form.state}
-                onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))}
-                className="mt-1 w-full rounded-lg border border-white/20 bg-black/50 px-3 py-2 text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-300">Business name</label>
-              <input
-                type="text"
-                value={form.businessName}
-                onChange={(e) => setForm((f) => ({ ...f, businessName: e.target.value }))}
-                className="mt-1 w-full rounded-lg border border-white/20 bg-black/50 px-3 py-2 text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-300">Notes</label>
-              <textarea
-                value={form.notes}
-                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                rows={2}
                 className="mt-1 w-full rounded-lg border border-white/20 bg-black/50 px-3 py-2 text-white"
               />
             </div>

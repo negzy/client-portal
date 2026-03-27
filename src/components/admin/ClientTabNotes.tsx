@@ -13,6 +13,7 @@ type Profile = {
   adminNotesCfpb: string | null;
   adminNotesCreditMonitoring: string | null;
   adminNotesEmail: string | null;
+  internalNotes?: string | null;
   tasks: Array<{
     id: string;
     title: string;
@@ -83,6 +84,7 @@ export function ClientTabNotes({ profile }: { profile: Profile }) {
         initialCfpb={profile.adminNotesCfpb}
         initialCreditMonitoring={profile.adminNotesCreditMonitoring}
         initialEmail={profile.adminNotesEmail}
+        initialOtherCredentials={profile.internalNotes ?? null}
       />
 
       <div className="card-elevated p-6">

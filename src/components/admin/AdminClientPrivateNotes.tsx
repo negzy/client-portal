@@ -8,16 +8,19 @@ export function AdminClientPrivateNotes({
   initialCfpb,
   initialCreditMonitoring,
   initialEmail,
+  initialOtherCredentials,
 }: {
   clientProfileId: string;
   initialCfpb: string | null;
   initialCreditMonitoring: string | null;
   initialEmail: string | null;
+  initialOtherCredentials: string | null;
 }) {
   const router = useRouter();
   const [cfpb, setCfpb] = useState(initialCfpb ?? "");
   const [monitoring, setMonitoring] = useState(initialCreditMonitoring ?? "");
   const [email, setEmail] = useState(initialEmail ?? "");
+  const [otherCredentials, setOtherCredentials] = useState(initialOtherCredentials ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -33,6 +36,7 @@ export function AdminClientPrivateNotes({
           adminNotesCfpb: cfpb.trim() || null,
           adminNotesCreditMonitoring: monitoring.trim() || null,
           adminNotesEmail: email.trim() || null,
+          internalNotes: otherCredentials.trim() || null,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -48,12 +52,12 @@ export function AdminClientPrivateNotes({
 
   return (
     <form onSubmit={save} className="card-elevated space-y-4 p-6">
-      <h2 className="section-heading">Admin-only file notes</h2>
+      <h2 className="section-heading">Admin-only credentials & notes</h2>
       <p className="section-sub mt-1">
-        CFPB, credit monitoring access, email context — not visible to the client.
+        CFPB details, credit-monitoring login, email login, and other private credentials per client.
       </p>
       <div>
-        <label className="text-xs font-medium text-slate-400">CFPB / complaint details</label>
+        <label className="text-xs font-medium text-slate-400">CFPB details (username, password, security Q/A, notes)</label>
         <textarea
           value={cfpb}
           onChange={(e) => setCfpb(e.target.value)}
@@ -62,7 +66,7 @@ export function AdminClientPrivateNotes({
         />
       </div>
       <div>
-        <label className="text-xs font-medium text-slate-400">Credit monitoring (admin)</label>
+        <label className="text-xs font-medium text-slate-400">Credit monitoring details</label>
         <textarea
           value={monitoring}
           onChange={(e) => setMonitoring(e.target.value)}
@@ -71,10 +75,19 @@ export function AdminClientPrivateNotes({
         />
       </div>
       <div>
-        <label className="text-xs font-medium text-slate-400">Email / comms notes</label>
+        <label className="text-xs font-medium text-slate-400">Email details</label>
         <textarea
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          rows={3}
+          className="input-field mt-1 min-h-[5rem]"
+        />
+      </div>
+      <div>
+        <label className="text-xs font-medium text-slate-400">Other private credentials / notes</label>
+        <textarea
+          value={otherCredentials}
+          onChange={(e) => setOtherCredentials(e.target.value)}
           rows={3}
           className="input-field mt-1 min-h-[5rem]"
         />

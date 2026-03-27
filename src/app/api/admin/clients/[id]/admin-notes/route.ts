@@ -8,6 +8,7 @@ const schema = z.object({
   adminNotesCfpb: z.string().optional().nullable(),
   adminNotesCreditMonitoring: z.string().optional().nullable(),
   adminNotesEmail: z.string().optional().nullable(),
+  internalNotes: z.string().optional().nullable(),
 });
 
 export async function PATCH(
@@ -40,6 +41,7 @@ export async function PATCH(
       adminNotesCfpb: body.adminNotesCfpb ?? undefined,
       adminNotesCreditMonitoring: body.adminNotesCreditMonitoring ?? undefined,
       adminNotesEmail: body.adminNotesEmail ?? undefined,
+      internalNotes: body.internalNotes ?? undefined,
     },
   });
 
