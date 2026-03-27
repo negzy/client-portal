@@ -56,7 +56,15 @@ export default async function AdminLeadsPage() {
                   <td className="p-4 text-slate-400">{lead.source ?? "—"}</td>
                   <td className="p-4 text-slate-400">{lead.assignedAdmin?.name ?? "—"}</td>
                   <td className="p-4">
-                    <LeadConvertButton contactId={lead.id} contactEmail={lead.email} />
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/admin/leads/${lead.id}/audit`}
+                        className="rounded-md border border-surface-border px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
+                      >
+                        Audit
+                      </Link>
+                      <LeadConvertButton contactId={lead.id} contactEmail={lead.email} />
+                    </div>
                   </td>
                 </tr>
               ))}
