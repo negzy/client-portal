@@ -555,6 +555,11 @@ type AuditPdfProps = {
   collectionsCount: number;
   chargeOffsCount: number;
   hardInquiriesCount: number;
+  hardInquiriesPerBureau?: {
+    equifax: number;
+    experian: number;
+    transUnion: number;
+  } | null;
   utilizationPct: number | null;
   totalRevolvingBalance?: number | null;
   totalRevolvingLimit?: number | null;
@@ -635,6 +640,9 @@ function AuditDocument(props: AuditPdfProps) {
   const eqCount = items.filter((i) => i.bureau.toLowerCase().includes("equifax")).length;
   const exCount = items.filter((i) => i.bureau.toLowerCase().includes("experian")).length;
   const tuCount = items.filter((i) => i.bureau.toLowerCase().includes("transunion")).length;
+  const inquiryEq = props.hardInquiriesPerBureau?.equifax ?? props.hardInquiriesCount;
+  const inquiryEx = props.hardInquiriesPerBureau?.experian ?? props.hardInquiriesCount;
+  const inquiryTu = props.hardInquiriesPerBureau?.transUnion ?? props.hardInquiriesCount;
 
   const showNegInBureau = (item: AuditNegativeItem, bureau: string) => {
     const b = bureau.toLowerCase();
@@ -768,7 +776,7 @@ function AuditDocument(props: AuditPdfProps) {
               </View>
               <View style={styles.bureauStatRow}>
                 <Text style={styles.bureauStatLabel}>Inquiries</Text>
-                <Text style={styles.bureauStatValue}>{props.hardInquiriesCount}</Text>
+                <Text style={styles.bureauStatValue}>{inquiryEq}</Text>
               </View>
               <View style={styles.bureauStatRow}>
                 <Text style={styles.bureauStatLabel}>Public Records</Text>
@@ -807,7 +815,7 @@ function AuditDocument(props: AuditPdfProps) {
               </View>
               <View style={styles.bureauStatRow}>
                 <Text style={styles.bureauStatLabel}>Inquiries</Text>
-                <Text style={styles.bureauStatValue}>{props.hardInquiriesCount}</Text>
+                <Text style={styles.bureauStatValue}>{inquiryEx}</Text>
               </View>
               <View style={styles.bureauStatRow}>
                 <Text style={styles.bureauStatLabel}>Public Records</Text>
@@ -846,7 +854,7 @@ function AuditDocument(props: AuditPdfProps) {
               </View>
               <View style={styles.bureauStatRow}>
                 <Text style={styles.bureauStatLabel}>Inquiries</Text>
-                <Text style={styles.bureauStatValue}>{props.hardInquiriesCount}</Text>
+                <Text style={styles.bureauStatValue}>{inquiryTu}</Text>
               </View>
               <View style={styles.bureauStatRow}>
                 <Text style={styles.bureauStatLabel}>Public Records</Text>
@@ -1042,6 +1050,7 @@ export async function generateAuditPdfBuffer(props: AuditPdfProps): Promise<Buff
       collectionsCount={props.collectionsCount}
       chargeOffsCount={props.chargeOffsCount}
       hardInquiriesCount={props.hardInquiriesCount}
+      hardInquiriesPerBureau={props.hardInquiriesPerBureau}
       utilizationPct={props.utilizationPct}
       totalRevolvingBalance={props.totalRevolvingBalance}
       totalRevolvingLimit={props.totalRevolvingLimit}

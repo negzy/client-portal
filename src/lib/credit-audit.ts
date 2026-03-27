@@ -131,6 +131,7 @@ export type CreditAnalysis = {
   repossessionsCount: number;
   bankruptciesCount: number;
   hardInquiriesCount: number;
+  hardInquiriesPerBureau: { equifax: number; experian: number; transUnion: number } | null;
   utilizationPct: number | null;
   /** Total revolving (credit card) balance from report, when parsed */
   totalRevolvingBalance: number | null;
@@ -264,6 +265,7 @@ export function analyzeCreditReport(params: {
   ).length;
   const hardInqParsed = rawText?.trim() ? parseHardInquiryCountFromReport(rawText) : null;
   const hardInquiriesCount = hardInqParsed?.displayMax ?? 0;
+  const hardInquiriesPerBureau = hardInqParsed?.perBureau ?? null;
   const revolving = rawText ? parseRevolvingFromReport(rawText) : null;
   const summaryFromReport = rawText ? parseSummaryFromReport(rawText) : null;
   const utilizationPct: number | null = (() => {
@@ -367,6 +369,7 @@ export function analyzeCreditReport(params: {
     repossessionsCount: 0,
     bankruptciesCount: 0,
     hardInquiriesCount,
+    hardInquiriesPerBureau,
     utilizationPct,
     totalRevolvingBalance,
     totalRevolvingLimit,
@@ -398,6 +401,7 @@ export async function createAuditFromAnalysis(
     collectionsCount: analysis.collectionsCount,
     chargeOffsCount: analysis.chargeOffsCount,
     hardInquiriesCount: analysis.hardInquiriesCount,
+    hardInquiriesPerBureau: analysis.hardInquiriesPerBureau,
     utilizationPct: analysis.utilizationPct,
     totalRevolvingBalance: analysis.totalRevolvingBalance,
     totalRevolvingLimit: analysis.totalRevolvingLimit,

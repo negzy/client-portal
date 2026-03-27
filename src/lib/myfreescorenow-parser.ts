@@ -496,6 +496,7 @@ export function parseNegativeItemsFromReport(text: string): ParsedNegativeItem[]
       if (
         cand.length >= 2 &&
         cand.length <= 70 &&
+        !NOT_ACCOUNT_NAME.test(cand) &&
         !negativeTypeRegex.test(cand) &&
         !detectBureau(cand) &&
         !/^account\s+details$/i.test(cand)
@@ -589,6 +590,7 @@ export function parseNegativeItemsFromReport(text: string): ParsedNegativeItem[]
     if (accountName.length < 2 && currentSubsectionCreditor) accountName = currentSubsectionCreditor;
     if (accountName.length < 2) accountName = line.slice(0, 60).trim() || "Unknown account";
     if (NOT_ACCOUNT_NAME.test(accountName)) accountName = "Unknown account";
+    if (accountName === "Unknown account") continue;
 
     // Normalize for dedupe: same name + bureau + type-ish
     const typeMatch = lineLower.match(/collection|charge-?off|charge\s*off|late\s*\d+|delinquent|derogatory/i);
