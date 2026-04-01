@@ -97,7 +97,8 @@ export async function POST(req: Request) {
       clientProfileId: profile.id,
       category: "CREDIT_REPORT",
       fileName: file.name,
-      filePath: path.relative(process.cwd(), filePath),
+      // Blob URLs must be stored as-is; path.relative() corrupts https://... and breaks /api/documents/download.
+      filePath,
       fileSize: file.size,
       mimeType: file.type,
     },
